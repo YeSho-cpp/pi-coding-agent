@@ -1,0 +1,389 @@
+{
+  "name": "pi-coding-agent",
+  "displayName": "Pi Coding Agent",
+  "description": "Visual VS Code UI for Pi Coding Agent. Uses your existing Pi CLI config, models, and sessions. Fork of FrostPi / Frost UI (AGPL-3.0).",
+  "version": "1.0.0",
+  "publisher": "yesho",
+  "license": "AGPL-3.0-only",
+  "private": false,
+  "type": "module",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1C1C1E",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "pi",
+    "pi coding agent",
+    "pi agent",
+    "pi vscode",
+    "pi vscode ui",
+    "pi gui",
+    "vscode",
+    "vscode ai",
+    "coding agent",
+    "ai coding agent",
+    "gui",
+    "rpc",
+    "ai"
+  ],
+  "homepage": "https://github.com/YeSho-cpp/pi-coding-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YeSho-cpp/pi-coding-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YeSho-cpp/pi-coding-agent/issues"
+  },
+  "main": "./dist/extension/extension.cjs",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Pi Coding Agent launches Pi with access to the current workspace and should only run in trusted workspaces."
+    },
+    "virtualWorkspaces": false
+  },
+  "activationEvents": [
+    "onView:piAgent.chat",
+    "onCommand:piAgent.newSession",
+    "onCommand:piAgent.resumeSession",
+    "onCommand:piAgent.focus",
+    "onCommand:piAgent.sendSelection",
+    "onCommand:piAgent.attachEditorSelection",
+    "onCommand:piAgent.attachEditorFile",
+    "onCommand:piAgent.deactivateEditorChip",
+    "onCommand:piAgent.activateEditorChip",
+    "onCommand:piAgent.sendFile",
+    "onCommand:piAgent.stop",
+    "onCommand:piAgent.exportDiagnostics",
+    "onCommand:piAgent.configureExecutable",
+    "onCommand:piAgent.restartSession",
+    "onCommand:piAgent.restartAllSessions",
+    "onCommand:piAgent.configureProxy",
+    "onCommand:piAgent.configureProxyCredentials"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "piAgent",
+          "title": "Pi",
+          "icon": "assets/activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "piAgent": [
+        {
+          "type": "webview",
+          "id": "piAgent.chat",
+          "name": "Pi",
+          "contextualTitle": "Pi Coding Agent"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "piAgent.chat",
+        "contents": "Open a trusted folder to start a Pi session.\n[Open Folder](command:vscode.openFolder)",
+        "when": "!workspaceFolderCount"
+      }
+    ],
+    "commands": [
+      {
+        "command": "piAgent.focus",
+        "title": "Pi Coding Agent: Focus Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "piAgent.newSession",
+        "title": "Pi Coding Agent: New Session",
+        "icon": "$(add)"
+      },
+      {
+        "command": "piAgent.resumeSession",
+        "title": "Pi Coding Agent: Resume Existing Session",
+        "icon": "$(history)"
+      },
+      {
+        "command": "piAgent.sendSelection",
+        "title": "Pi Coding Agent: Mention Selection Path in Prompt"
+      },
+      {
+        "command": "piAgent.attachEditorSelection",
+        "title": "Pi Coding Agent: Attach Editor Selection to Context",
+        "icon": "$(add)"
+      },
+      {
+        "command": "piAgent.attachEditorFile",
+        "title": "Pi Coding Agent: Attach Current File to Context",
+        "icon": "$(add)"
+      },
+      {
+        "command": "piAgent.deactivateEditorChip",
+        "title": "Pi Coding Agent: Deactivate Editor Context Chip"
+      },
+      {
+        "command": "piAgent.activateEditorChip",
+        "title": "Pi Coding Agent: Activate Editor Context Chip"
+      },
+      {
+        "command": "piAgent.sendFile",
+        "title": "Pi Coding Agent: Mention Current File in Prompt"
+      },
+      {
+        "command": "piAgent.stop",
+        "title": "Pi Coding Agent: Stop Active Session",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "piAgent.exportDiagnostics",
+        "title": "Pi Coding Agent: Export Diagnostics"
+      },
+      {
+        "command": "piAgent.configureExecutable",
+        "title": "Pi Coding Agent: Configure Pi Executable"
+      },
+      {
+        "command": "piAgent.restartSession",
+        "title": "Pi Coding Agent: Restart Current Session",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "piAgent.restartAllSessions",
+        "title": "Pi Coding Agent: Restart All Sessions"
+      },
+      {
+        "command": "piAgent.configureProxy",
+        "title": "Pi Coding Agent: Configure Network Proxy"
+      },
+      {
+        "command": "piAgent.configureProxyCredentials",
+        "title": "Pi Coding Agent: Configure Proxy Credentials"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "piAgent.sendSelection",
+          "when": "editorHasSelection && resourceScheme == file",
+          "group": "piAgent@1"
+        },
+        {
+          "command": "piAgent.sendFile",
+          "when": "resourceScheme == file",
+          "group": "piAgent@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "key": "escape",
+        "command": "piAgent.deactivateEditorChip",
+        "when": "editorTextFocus && piAgent.editorChipActive && !suggestWidgetVisible && !renameInputVisible && !inSnippetMode && !findInputFocussed && !composing"
+      }
+    ],
+    "configuration": {
+      "title": "Pi",
+      "properties": {
+        "piAgent.pi.executable": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "description": "Optional Pi executable or Node.js CLI path. Leave empty to resolve Pi from PATH."
+        },
+        "piAgent.pi.arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "description": "Additional arguments passed after `pi --mode rpc`."
+        },
+        "piAgent.session.startOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "When a previously selected session exists, start its Pi process when Pi Coding Agent activates. Does not create a new session if none exist."
+        },
+        "piAgent.session.autoRename": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Automatically name a new session from its first user prompt (does not overwrite manual renames)."
+        },
+        "piAgent.composer.streamingBehavior": {
+          "type": "string",
+          "enum": [
+            "steer",
+            "followUp"
+          ],
+          "enumDescriptions": [
+            "Deliver while the current run is active, after current tool calls.",
+            "Deliver only after the current run fully settles."
+          ],
+          "default": "followUp",
+          "scope": "resource",
+          "description": "Default delivery for normal prompts submitted while Pi is streaming. The Composer can override it per session; extension commands execute immediately."
+        },
+        "piAgent.conversation.collapseTurnTrace": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "After a turn completes, collapse tools, reasoning, and interim replies into one summary above the final response."
+        },
+        "piAgent.agent.permissionMode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "autoConfirm",
+            "restricted"
+          ],
+          "enumDescriptions": [
+            "Show Pi confirmation cards (default).",
+            "Auto-approve Pi extension confirm dialogs.",
+            "Launch Pi without write/bash tools (--exclude-tools bash,edit,write). Restart session to apply."
+          ],
+          "default": "ask",
+          "scope": "resource",
+          "description": "Agent permission mode — analogous to Copilot/OpenChamber Default permissions / Allow all."
+        },
+        "piAgent.questionTool.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Inject Pi Coding Agent private question tool when a Pi session process starts. Running sessions must be restarted after this setting changes."
+        },
+        "piAgent.attachments.maxImageBytes": {
+          "type": "number",
+          "minimum": 1048576,
+          "maximum": 52428800,
+          "default": 10485760,
+          "scope": "resource",
+          "description": "Maximum size in bytes for each pasted image."
+        },
+        "piAgent.diagnostics.level": {
+          "type": "string",
+          "enum": [
+            "error",
+            "info",
+            "debug"
+          ],
+          "default": "info",
+          "scope": "window",
+          "description": "Verbosity of the Pi output channel. Prompt and model content are not logged."
+        },
+        "piAgent.notifications.experimental.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "Experimental: Notify when an agent turn completes, a session fails, or Pi Coding Agent waits for input while the VS Code window is unfocused. Local Windows uses a native PowerShell toast; unavailable native delivery falls back to a VS Code notification."
+        },
+        "piAgent.network.proxy.mode": {
+          "type": "string",
+          "enum": [
+            "inherit",
+            "vscode",
+            "custom",
+            "direct"
+          ],
+          "enumDescriptions": [
+            "Inherit the Extension Host environment.",
+            "Use the VS Code http.proxy setting.",
+            "Inject Pi custom proxy variables.",
+            "Remove inherited proxy variables for Pi."
+          ],
+          "default": "inherit",
+          "scope": "machine-overridable",
+          "description": "Proxy mode applied when a Pi session process starts. Running sessions must be restarted."
+        },
+        "piAgent.network.proxy.endpoint": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "description": "Custom proxy endpoint for custom mode. host:port or http(s)://… sets HTTP_PROXY and HTTPS_PROXY; socks5://… sets ALL_PROXY. Store authentication through the Pi credentials command."
+        },
+        "piAgent.network.proxy.noProxy": {
+          "type": "string",
+          "default": "localhost,127.0.0.1,::1",
+          "scope": "machine-overridable",
+          "description": "Comma-separated hosts that bypass the proxy. Defaults to local loopback addresses. Edit in Settings when the default loopback list is not enough."
+        },
+        "piAgent.composer.fileMentions.respectSearchExclude": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Exclude paths matched by VS Code search.exclude from @ path completion."
+        },
+        "piAgent.composer.fileMentions.respectIgnoreFiles": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Respect .gitignore, .ignore, .fdignore, and global ignore rules during @ path completion."
+        },
+        "piAgent.composer.fileMentions.followSymlinks": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Follow symbolic links during @ path completion."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs && vite build",
+    "clean": "node ../../scripts/clean-dir.mjs dist coverage .vscode-test",
+    "typecheck": "tsc -p tsconfig.json --noEmit && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "node test/e2e/runTest.cjs",
+    "lint": "eslint src pi-extensions test --max-warnings 0"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.6",
+    "@frostime/pi-rpc": "workspace:*",
+    "@vscode/codicons": "^0.0.44",
+    "bits-ui": "^2.18.1",
+    "dompurify": "^3.4.12",
+    "highlight.js": "^11.11.1",
+    "html-to-image": "^1.11.13",
+    "katex": "^0.18.1",
+    "markdown-it": "^14.3.0",
+    "mermaid": "^11.16.0",
+    "minimatch": "^10.2.5",
+    "svelte": "^5.56.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@lobehub/icons": "^5.18.0",
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
+    "@testing-library/svelte": "^5.2.8",
+    "@types/katex": "^0.16.8",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^24.1.0",
+    "@types/vscode": "^1.99.0",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.0",
+    "eslint-plugin-svelte": "^3.11.0",
+    "jsdom": "^26.1.0",
+    "svelte-check": "^4.3.1",
+    "svelte-eslint-parser": "^1.3.0",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

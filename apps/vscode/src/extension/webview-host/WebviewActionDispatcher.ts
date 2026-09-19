@@ -1,0 +1,451 @@
+import { homedir } from "node:os";
+
+import * as vscode from "vscode";
+
+import type { HostToWebviewPayload } from "../../shared/bridge/hostToWebview.js";
+import type { WebviewToHostMessage } from "../../shared/bridge/webviewToHost.js";
+import type { ComposerDraftView } from "../../shared/model/composerDraftModel.js";
+import { captureActiveFileReference } from "../composer/mentions/captureActiveFile.js";
+import { captureActiveSelection } from "../composer/mentions/captureSelection.js";
+import { captureContextItems, contextId, pickContextItemsQuickPick } from "../composer/mentions/contextAttachPicker.js";
+import { formatFileMention } from "../composer/mentions/formatFileMention.js";
+import type { ContextAttachItemView } from "../../shared/model/contextAttachModel.js";
+import { listEditorMentionSpecials } from "../composer/mentions/editorMentionSpecials.js";
+import type { WorkspaceFileSearch } from "../fd/WorkspaceFileSearch.js";
+import { workspaceFileBoosts, workspaceFileExcludeRules } from "../composer/mentions/workspaceFileSearchContext.js";
+import { configurePiExecutable } from "../configuration/configurePiExecutable.js";
+import { readConfiguration } from "../configuration/readConfiguration.js";
+import { workspaceUriForPath } from "../configuration/workspaceScope.js";
+import { openReferencedLocation } from "../conversation/openReferencedLocation.js";
+import { exportDiagnostics } from "../diagnostics/exportDiagnostics.js";
+import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
+import { openFileDiff } from "../file-changes/GitBaseContentProvider.js";
+import type { ComposerExternalEditorOpenResult } from "../composer/ComposerExternalEditor.js";
+import type { SessionRegistry } from "../sessions/SessionRegistry.js";
+import type { ComposerDraftCache } from "./ComposerDraftCache.js";
+import { resolveLocalMarkdownImage } from "./markdown-images/MarkdownImageResolver.js";
+import type { ConnectionContext } from "./webviewTypes.js";
+
+export interface DispatchConnection extends ConnectionContext {
+  readonly fileSearch: WorkspaceFileSearch;
+  post(message: HostToWebviewPayload): void;
+  insertPromptText(text: string): void;
+}
+
+export interface WebviewActionDispatcherDependencies {
+  registry: SessionRegistry;
+  logger: DiagnosticLogger;
+  drafts: ComposerDraftCache;
+  openPanel(sessionId: string, draft?: ComposerDraftView): void | Promise<void>;
+  revealPanel(sessionId: string): void | Promise<void>;
+  openComposerEditor(sessionId: string, text: string): Promise<ComposerExternalEditorOpenResult>;
+  setEditorChipAttached?(attached: boolean): void;
+}
+
+const SIDEBAR_ONLY_ACTIONS = new Set<WebviewToHostMessage["type"]>([
+  "openFolder",
+  "createSession",
+  "createSessionWithArguments",
+  "resumeSession",
+  "activateSession",
+  "closeSession",
+  "renameSession",
+  "openSessionPanel",
+  "revealSessionPanel",
+  "openSettings",
+  "openProxySettings",
+  "restartSession",
+  "configureExecutable",
+  "exportDiagnostics",
+  "retryStart",
+  "checkPiIntegration",
+  "refreshCommands",
+]);
+
+const SIDEBAR_COLLECTION_TARGET_ACTIONS = new Set<WebviewToHostMessage["type"]>([
+  "activateSession",
+  "closeSession",
+  "renameSession",
+  "revealSessionPanel",
+  "restartSession",
+  "retryStart",
+  "checkPiIntegration",
+  "refreshCommands",
+]);
+
+export class WebviewActionDispatcher {
+  readonly #registry: SessionRegistry;
+  readonly #logger: DiagnosticLogger;
+  readonly #drafts: ComposerDraftCache;
+  readonly #openPanel: (sessionId: string, draft?: ComposerDraftView) => void | Promise<void>;
+  readonly #revealPanel: (sessionId: string) => void | Promise<void>;
+  readonly #openComposerEditor: (sessionId: string, text: string) => Promise<ComposerExternalEditorOpenResult>;
+  readonly #setEditorChipAttached: (attached: boolean) => void;
+
+  constructor(dependencies: WebviewActionDispatcherDependencies) {
+    this.#registry = dependencies.registry;
+    this.#logger = dependencies.logger;
+    this.#drafts = dependencies.drafts;
+    this.#openPanel = (sessionId, draft) => draft
+      ? dependencies.openPanel(sessionId, draft)
+      : dependencies.openPanel(sessionId);
+    this.#revealPanel = (sessionId) => dependencies.revealPanel(sessionId);
+    this.#openComposerEditor = (sessionId, text) => dependencies.openComposerEditor(sessionId, text);
+    this.#setEditorChipAttached = (attached) => dependencies.setEditorChipAttached?.(attached);
+  }
+
+  async dispatch(message: WebviewToHostMessage, connection: DispatchConnection): Promise<void> {
+    if (connection.surface.kind === "panel" && SIDEBAR_ONLY_ACTIONS.has(message.type)) {
+      throw new Error(message.type === "resumeSession"
+        ? "Open the Pi sidebar to resume a session."
+        : "This action is available only from the Pi sidebar.");
+    }
+    if (message.type === "loadMarkdownImage") {
+      await this.#loadMarkdownImage(message, connection);
+      return;
+    }
+    this.#authorizeSessionTarget(message, connection);
+
+    switch (message.type) {
+      case "ready":
+        return;
+      case "openFolder":
+        await vscode.commands.executeCommand("vscode.openFolder");
+        return;
+      case "createSession":
+        await this.#registry.createSession(message.ephemeral ?? false);
+        return;
+      case "createSessionWithArguments":
+        await this.#registry.createSessionWithCustomArguments();
+        return;
+      case "resumeSession":
+        await this.#registry.resumeSession();
+        return;
+      case "openSessionPanel":
+        await this.#openPanel(message.sessionId, message.draft);
+        return;
+      case "revealSessionPanel":
+        await this.#revealPanel(message.sessionId);
+        return;
+      case "updateComposerDraft":
+        if (connection.surface.kind !== "panel" && !this.#drafts.hasPendingSubmission(message.sessionId)) {
+          throw new Error("Only an externalized Composer synchronizes drafts to the Host.");
+        }
+        this.#drafts.applyMutation(message.sessionId, message.draft);
+        return;
+      case "openComposerEditor":
+        if (await this.#openComposerEditor(message.sessionId, message.text) === "already-open") {
+          connection.post({ type: "toast", level: "info", message: "Finish the open composer editor tab first." });
+        }
+        return;
+      case "activateSession":
+        await this.#registry.activateSession(message.sessionId);
+        return;
+      case "closeSession":
+        await this.#registry.closeSession(message.sessionId);
+        return;
+      case "renameSession":
+        await this.#registry.rename(message.sessionId, message.name);
+        return;
+      case "copyText":
+        await vscode.env.clipboard.writeText(message.text);
+        connection.post({ type: "toast", level: "info", message: "Copied to clipboard." });
+        return;
+      case "sendPrompt": {
+        const hostOwnsDraft = connection.surface.kind === "panel"
+          || this.#drafts.hasPendingSubmission(message.sessionId);
+        try {
+          const submitted = hostOwnsDraft
+            ? this.#drafts.beginSubmission(message.sessionId, message.requestId, {
+                revision: message.draftRevision,
+                text: message.text,
+                images: message.images,
+              })
+            : { text: message.text, images: message.images };
+          await this.#registry.sendPrompt(message.sessionId, submitted.text, submitted.images, message.streamingBehavior);
+          if (hostOwnsDraft) this.#drafts.resolveSubmission(message.sessionId, message.requestId, true);
+          connection.post({ type: "promptResult", requestId: message.requestId, ok: true });
+        } catch (error) {
+          const errorText = error instanceof Error ? error.message : String(error);
+          if (hostOwnsDraft) this.#drafts.resolveSubmission(message.sessionId, message.requestId, false);
+          connection.post({ type: "promptResult", requestId: message.requestId, ok: false, error: errorText });
+        }
+        return;
+      }
+      case "abort":
+        await this.#registry.abort(message.sessionId);
+        return;
+      case "cancelFork":
+        await this.#registry.cancelFork(message.sessionId);
+        return;
+      case "branchHere":
+        await this.#registry.branchHere(message.sessionId, message.entryId, message.hasDraft);
+        return;
+      case "switchBranch":
+        await this.#registry.switchBranch(message.sessionId, message.branchPointId, message.hasDraft);
+        return;
+      case "forkMessage": {
+        let result: Awaited<ReturnType<SessionRegistry["forkMessage"]>>;
+        try {
+          const selection = connection.surface.kind === "sidebar" ? "select-result" : "preserve-sidebar-selection";
+          result = await this.#registry.forkMessage(message.sessionId, message.entryId, selection);
+        } catch (error) {
+          connection.post({
+            type: "forkResult",
+            requestId: message.requestId,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return;
+        }
+
+        connection.post({ type: "forkResult", requestId: message.requestId, ok: true, ...result });
+        if (!result.cancelled && result.forkSessionId && connection.surface.kind === "panel") {
+          try {
+            await this.#openPanel(result.forkSessionId);
+          } catch (error) {
+            this.#logger.error(`Fork result Session Tab failed to open for ${result.forkSessionId}`, error);
+            connection.post({
+              type: "toast",
+              level: "error",
+              message: "Fork succeeded, but its Session Tab could not be opened. Select the Fork result in the sidebar.",
+            });
+          }
+        }
+        return;
+      }
+      case "setModel":
+        await this.#registry.setModel(message.sessionId, message.provider, message.modelId);
+        return;
+      case "setThinkingLevel":
+        await this.#registry.setThinkingLevel(message.sessionId, message.level);
+        return;
+      case "respondExtensionUi":
+        await this.#registry.respondExtensionUi(message.sessionId, message.requestId, message.response);
+        return;
+      case "respondQuestion":
+        await this.#registry.respondQuestion(message.sessionId, message.requestId, message.response);
+        return;
+      case "addSelection": {
+        const text = captureActiveSelection();
+        if (!text) throw new Error("Open a workspace file first.");
+        connection.insertPromptText(`${text} `);
+        return;
+      }
+      case "addCurrentFile": {
+        const text = captureActiveFileReference();
+        if (!text) throw new Error("Open a workspace file first.");
+        connection.insertPromptText(`${text} `);
+        return;
+      }
+      case "captureContext": {
+        const items = captureContextItems(message.kind);
+        if (!items.length) throw new Error("Open a workspace file in the editor first.");
+        const session = this.#displayedSession(connection);
+        connection.post({
+          type: "contextAttachPicked",
+          items,
+          ...(session?.id ? { sessionId: session.id } : {}),
+        });
+        return;
+      }
+      case "setEditorChipAttached":
+        this.#setEditorChipAttached(message.attached);
+        return;
+      case "pickContext": {
+        const session = this.#displayedSession(connection);
+        const cwd = session?.cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+        const mode = message.mode === "files" ? "filesAndFolders" : message.mode;
+        const items = await pickContextItemsQuickPick(
+          connection.fileSearch.search.bind(connection.fileSearch),
+          cwd,
+          mode,
+        );
+        if (!items.length) {
+          // Cancel / Esc — do not show a noisy empty-selection toast.
+          return;
+        }
+        const sessionId = session?.id;
+        connection.post({
+          type: "contextAttachPicked",
+          items,
+          ...(sessionId ? { sessionId } : {}),
+        });
+        connection.post({
+          type: "toast",
+          level: "info",
+          message: `已选择 ${items.length} 项，已写入 Composer @引用`,
+        });
+        return;
+      }
+      case "openFile":
+        await openReferencedLocation(message, this.#displayedSession(connection)?.cwd);
+        return;
+      case "openDiff":
+        await openFileDiff(message.path);
+        return;
+      case "openExternal": {
+        const uri = vscode.Uri.parse(message.url, true);
+        if (uri.scheme !== "https" && uri.scheme !== "http") throw new Error("Only HTTP(S) links can be opened.");
+        await vscode.env.openExternal(uri);
+        return;
+      }
+      case "refreshCommands":
+        await this.#registry.refreshCommands(message.sessionId);
+        return;
+      case "checkPiIntegration":
+        await this.#registry.checkPiIntegration(message.sessionId);
+        return;
+      case "refreshModels":
+        await this.#registry.refreshModels(message.sessionId);
+        return;
+      case "loadHistory":
+        await this.#registry.loadHistory(message.sessionId);
+        return;
+      case "searchWorkspaceFiles":
+        await this.#searchWorkspaceFiles(message, connection);
+        return;
+      case "openShellInTerminal": {
+        const session = this.#displayedSession(connection);
+        const cwd = session?.cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const terminal =
+          vscode.window.terminals.find((t) => t.name === "Pi")
+          || vscode.window.createTerminal(cwd ? { name: "Pi", cwd } : { name: "Pi" });
+        terminal.show();
+        terminal.sendText(message.command, true);
+        return;
+      }
+      case "setAgentPermissionMode": {
+        const scope = vscode.workspace.workspaceFolders?.[0]?.uri;
+        await vscode.workspace
+          .getConfiguration("piAgent", scope)
+          .update("agent.permissionMode", message.mode, vscode.ConfigurationTarget.WorkspaceFolder);
+        connection.post({
+          type: "toast",
+          level: "info",
+          message: message.mode === "restricted"
+            ? "Permission mode: restricted. Restart the session to drop bash/edit/write tools."
+            : `Permission mode: ${message.mode}`,
+        });
+        this.#registry.refreshConfigurationState();
+        return;
+      }
+      case "openSettings":
+        await vscode.commands.executeCommand("workbench.action.openSettings", "@ext:yesho.pi-coding-agent");
+        return;
+      case "saveImage": {
+        const base64 = message.dataUrl.slice(message.dataUrl.indexOf(",") + 1);
+        const buffer = Buffer.from(base64, "base64");
+        // OpenChamber: default to Desktop + friendly title.
+        const defaultPath = `${homedir()}/Desktop/${message.fileName}`;
+        const uri = await vscode.window.showSaveDialog({
+          defaultUri: vscode.Uri.file(defaultPath),
+          title: "保存为图片",
+          filters: { PNG: ["png"], JPEG: ["jpg", "jpeg"] },
+          saveLabel: "Save image",
+        });
+        if (!uri) {
+          connection.post({ type: "saveImageResult", requestId: message.requestId, ok: false, error: "cancelled" });
+          return;
+        }
+        await vscode.workspace.fs.writeFile(uri, new Uint8Array(buffer));
+        connection.post({ type: "saveImageResult", requestId: message.requestId, ok: true, path: uri.fsPath });
+        connection.post({ type: "toast", level: "info", message: `Image saved: ${uri.fsPath}` });
+        return;
+      }
+      case "openProxySettings":
+        await vscode.commands.executeCommand("piAgent.configureProxy");
+        return;
+      case "restartSession":
+        await this.#registry.retrySession(message.sessionId);
+        return;
+      case "configureExecutable":
+        await configurePiExecutable();
+        return;
+      case "exportDiagnostics":
+        await exportDiagnostics(this.#logger, this.#registry.diagnosticsSummary());
+        return;
+      case "retryStart":
+        await this.#registry.retrySession(message.sessionId);
+        return;
+    }
+  }
+
+  async #loadMarkdownImage(
+    message: Extract<WebviewToHostMessage, { type: "loadMarkdownImage" }>,
+    connection: DispatchConnection,
+  ): Promise<void> {
+    try {
+      this.#authorizeSessionTarget(message, connection);
+    } catch {
+      connection.post({
+        type: "markdownImageResult",
+        requestId: message.requestId,
+        sessionId: message.sessionId,
+        result: { ok: false, reason: "invalidSource" },
+      });
+      return;
+    }
+
+    const session = this.#displayedSession(connection);
+    const result = session
+      ? await resolveLocalMarkdownImage(message.source, session.cwd, session.attachmentLimits.maxImageBytes)
+      : { ok: false as const, reason: "invalidSource" as const };
+    connection.post({
+      type: "markdownImageResult",
+      requestId: message.requestId,
+      sessionId: message.sessionId,
+      result,
+    });
+  }
+
+  #authorizeSessionTarget(message: WebviewToHostMessage, connection: ConnectionContext): void {
+    if (!("sessionId" in message) || !message.sessionId) return;
+    if (connection.surface.kind === "sidebar" && SIDEBAR_COLLECTION_TARGET_ACTIONS.has(message.type)) {
+      if (!this.#registry.hasSession(message.sessionId)) throw new Error("This Pi session no longer exists.");
+      return;
+    }
+    if (!connection.sessionId || message.sessionId !== connection.sessionId) {
+      throw new Error("The Webview action does not target the Session displayed by this surface.");
+    }
+    if (!this.#registry.hasSession(message.sessionId)) throw new Error("This Pi session no longer exists.");
+  }
+
+  #displayedSession(connection: ConnectionContext) {
+    return connection.sessionId ? this.#registry.sessionView(connection.sessionId) : null;
+  }
+
+  async #searchWorkspaceFiles(
+    message: Extract<WebviewToHostMessage, { type: "searchWorkspaceFiles" }>,
+    connection: DispatchConnection,
+  ): Promise<void> {
+    try {
+      const session = this.#displayedSession(connection);
+      if (!session) throw new Error("The displayed Session changed before file search completed.");
+      const scope = workspaceUriForPath(session.cwd);
+      const configuration = readConfiguration(scope);
+      const items = await connection.fileSearch.search(
+        session.cwd,
+        message.query,
+        message.limit,
+        workspaceFileBoosts(session),
+        {
+          excludeRules: workspaceFileExcludeRules(scope, configuration.fileMentionRespectSearchExclude),
+          respectIgnoreFiles: configuration.fileMentionRespectIgnoreFiles,
+          followSymlinks: configuration.fileMentionFollowSymlinks,
+        },
+      );
+      const specials = listEditorMentionSpecials(message.query);
+      connection.post({
+        type: "workspaceFileSuggestions",
+        requestId: message.requestId,
+        items,
+        ...(specials.length ? { specials } : {}),
+      });
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : String(error);
+      this.#logger.error("Workspace file completion failed", error);
+      connection.post({ type: "workspaceFileSuggestions", requestId: message.requestId, items: [], error: errorText });
+    }
+  }
+}

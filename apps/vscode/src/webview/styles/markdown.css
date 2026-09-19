@@ -1,0 +1,409 @@
+/*
+ * Frost Markdown — dark product theme for AI answers.
+ *
+ * Design refs (open-source dark chat/desktop UIs):
+ * - OpenChamber warm dark chrome (#151313 / #1C1B1A / gold #edb449)
+ * - Tokyo Night / One Dark syntax contrast on deep neutral panels
+ * - Chat UIs (ChatGPT-like / Warp-like): deep code wells, muted meta, high-contrast tokens
+ */
+
+.response-snapshot {
+  min-width: 0;
+  padding: 2px 0;
+}
+.response-snapshot :global(.message-actions),
+.response-snapshot :global(.response-actions) {
+  display: none !important;
+}
+
+.message-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-family: var(--frostui-chat-message-font-family, var(--font-ui));
+  font-size: var(--frostui-chat-message-font-size, var(--font-size));
+  line-height: 1.62;
+  color: var(--md-body, #d9d4c9);
+}
+
+/* ── Markdown syntax tokens ────────────────────────────────────────── */
+
+.markdown-body {
+  /* Prefer active VS Code theme (Mermaid Dark / Dark VS) over hardcoded warm black */
+  --md-body: var(--vscode-foreground, #d4d4d4);
+  --md-heading: var(--vscode-foreground, #ffffff);
+  --md-muted: var(--vscode-descriptionForeground, #9d9d9d);
+  --md-faint: var(--vscode-disabledForeground, #6a6a6a);
+  --md-link: var(--vscode-textLink-foreground, #4daafc);
+  --md-link-hover: var(--vscode-textLink-activeForeground, #6cb6ff);
+  --md-quote-border: var(--vscode-textBlockQuote-border, #0078d4);
+  --md-quote-bg: var(--vscode-textBlockQuote-background, rgba(0, 122, 212, 0.08));
+  --md-quote-text: var(--vscode-descriptionForeground, #9d9d9d);
+  --md-hr: var(--vscode-textSeparator-foreground, #454545);
+  --md-table-border: var(--vscode-chat-requestBorder, var(--vscode-widget-border, #303031));
+  --md-table-header: var(--vscode-editorWidget-background, #252526);
+  --md-inline-code-bg: var(--vscode-textPreformat-background, var(--vscode-textCodeBlock-background, #1e1e1e));
+  --md-inline-code-fg: var(--vscode-textPreformat-foreground, var(--vscode-foreground, #d4d4d4));
+  --md-inline-code-border: var(--vscode-textPreformat-border, transparent);
+
+  --md-code-bg: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
+  --md-code-border: var(--vscode-widget-border, #303031);
+  --md-code-fg: var(--vscode-editor-foreground, #d4d4d4);
+
+  /* Syntax — Dark VS / Mermaid Dark (editor tokenColors) */
+  --md-syn-comment: #6a9955;
+  --md-syn-keyword: #569cd6;
+  --md-syn-string: #ce9178;
+  --md-syn-number: #b5cea8;
+  --md-syn-function: #dcdcaa;
+  --md-syn-variable: #9cdcfe;
+  --md-syn-type: #4ec9b0;
+  --md-syn-operator: #d4d4d4;
+  --md-syn-tag: #569cd6;
+  --md-syn-attr: #9cdcfe;
+  --md-syn-builtin: #4ec9b0;
+  --md-syn-add: #89d185;
+  --md-syn-del: #f48771;
+
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+  font-family: var(--vscode-chat-font-family, inherit);
+  font-size: var(--vscode-chat-font-size-body-m, inherit);
+  color: var(--md-body);
+}
+
+.markdown-body > :first-child { margin-top: 0 !important; }
+.markdown-body > :last-child { margin-bottom: 0 !important; }
+.markdown-body p {
+  margin: 0 0 .6em;
+  color: var(--md-body);
+  line-height: 1.5;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin: 1.25em 0 .55em;
+  line-height: 1.3;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--md-heading);
+  font-family: inherit;
+}
+.markdown-body h1 { font-size: 1.42em; }
+.markdown-body h2 { font-size: 1.24em; }
+.markdown-body h3 { font-size: 1.1em; }
+.markdown-body h4 { font-size: 1em; }
+.markdown-body strong { color: var(--md-heading); font-weight: 650; }
+
+.markdown-body ul,
+.markdown-body ol { margin: .4em 0 .85em; padding-left: 1.4em; }
+.markdown-body li { margin: .22em 0; color: var(--md-body); }
+.markdown-body li::marker { color: var(--md-faint); }
+
+.markdown-body a {
+  color: var(--md-link);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--md-link) 28%, transparent);
+}
+.markdown-body a:hover {
+  color: var(--md-link-hover);
+  border-bottom-color: var(--md-link-hover);
+  text-decoration: none;
+}
+
+.markdown-body blockquote {
+  margin: .85em 0;
+  padding: .35em 1em .35em .9em;
+  border: none;
+  border-left: 3px solid var(--md-quote-border);
+  border-radius: 0 8px 8px 0;
+  background: var(--md-quote-bg);
+  color: var(--md-quote-text);
+}
+.markdown-body blockquote p:last-child { margin-bottom: 0; }
+
+.markdown-body hr {
+  height: 1px;
+  margin: 1.1em 0;
+  border: 0;
+  background: var(--md-hr);
+}
+
+.markdown-body img { border-radius: 8px; max-width: 100%; }
+
+/* Inline code */
+.markdown-body code:not(pre code) {
+  padding: .1em .4em;
+  border: 1px solid var(--md-inline-code-border);
+  border-radius: 4px;
+  background: var(--md-inline-code-bg);
+  color: var(--md-inline-code-fg);
+  font-family: var(--font-mono);
+  font-size: .9em;
+  white-space: nowrap;
+}
+.markdown-body a code {
+  color: var(--md-link);
+  border-color: color-mix(in srgb, var(--md-link) 25%, var(--md-inline-code-border));
+}
+
+/* ── Code blocks ───────────────────────────────────────────────────── */
+
+.markdown-body pre {
+  position: relative;
+  max-width: 100%;
+  margin: .9em 0 1em;
+  overflow: clip;
+  background: var(--md-code-bg);
+  border: 1px solid var(--md-code-border);
+  border-radius: 10px;
+  color: var(--md-code-fg);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  tab-size: 4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+}
+.markdown-body pre .code-scroll {
+  display: block;
+  overflow: auto;
+  padding: 12px 14px;
+}
+.markdown-body pre code {
+  display: block;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  white-space: pre;
+}
+.markdown-body pre.wrap .code-scroll {
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.markdown-body pre .code-lang {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  z-index: 1;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: lowercase;
+  color: var(--md-faint);
+  pointer-events: none;
+}
+.markdown-body pre .code-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  display: inline-flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.markdown-body pre:hover .code-actions,
+.markdown-body pre:focus-within .code-actions { opacity: 1; }
+.markdown-body pre .code-actions button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--md-code-border);
+  border-radius: 6px;
+  background: #1c1a17;
+  color: var(--md-muted);
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  user-select: none;
+}
+.markdown-body pre .code-actions button:hover {
+  color: var(--md-heading);
+  background: #2a2622;
+}
+.markdown-body pre .copy-btn.copied { color: var(--md-syn-add); }
+.markdown-body pre .wrap-btn.active { color: var(--md-heading); background: #2a2622; }
+
+/* ── highlight.js tokens ───────────────────────────────────────────── */
+
+.hljs-comment,
+.hljs-quote,
+.hljs-meta,
+.hljs-doctag { color: var(--md-syn-comment); font-style: italic; }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-name,
+.hljs-type,
+.hljs-selector-pseudo { color: var(--md-syn-keyword); }
+.hljs-string,
+.hljs-regexp,
+.hljs-template-tag,
+.hljs-addition.hljs-string { color: var(--md-syn-string); }
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-literal.hljs-number { color: var(--md-syn-number); }
+.hljs-function,
+.hljs-title.function_,
+.hljs-title.function { color: var(--md-syn-function); }
+.hljs-title,
+.hljs-section,
+.hljs-selector-id { color: var(--md-syn-function); }
+.hljs-variable,
+.hljs-template-variable,
+.hljs-params,
+.hljs-property { color: var(--md-syn-variable); }
+.hljs-built_in,
+.hljs-class .hljs-title,
+.hljs-title.class_,
+.hljs-selector-class { color: var(--md-syn-type); }
+.hljs-tag { color: var(--md-syn-tag); }
+.hljs-attr,
+.hljs-attribute,
+.hljs-selector-attr { color: var(--md-syn-attr); }
+.hljs-operator,
+.hljs-punctuation,
+.hljs-subst { color: var(--md-syn-operator); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 650; color: var(--md-heading); }
+.hljs-deletion { color: var(--md-syn-del); }
+.hljs-addition { color: var(--md-syn-add); }
+
+/* ── Tables ────────────────────────────────────────────────────────── */
+
+.frost-table-wrap {
+  margin: .9em 0 1em;
+  border: 1px solid var(--md-table-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--md-code-bg);
+}
+.frost-table-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--md-table-border);
+  background: #1a1816;
+}
+.frost-table-copy {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  border: 1px solid var(--md-table-border) !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: var(--md-muted) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 10px !important;
+  cursor: pointer;
+}
+.frost-table-copy:hover {
+  color: var(--md-heading) !important;
+  background: #2a2622 !important;
+}
+.markdown-body .frost-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 !important;
+  font-size: .94em;
+  color: var(--md-body);
+}
+.markdown-body .frost-table-wrap th,
+.markdown-body .frost-table-wrap td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--md-table-border);
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  text-align: left;
+}
+.markdown-body .frost-table-wrap th {
+  color: var(--md-heading);
+  font-weight: 600;
+  background: var(--md-table-header);
+}
+.markdown-body .frost-table-wrap td { color: var(--md-body); }
+.markdown-body .frost-table-wrap tr:last-child td { border-bottom: 0; }
+
+.markdown-body table {
+  width: 100%;
+  margin: .7em 0;
+  border-collapse: collapse;
+  font-size: .94em;
+}
+.markdown-body th,
+.markdown-body td {
+  padding: 6px 8px;
+  border: 1px solid var(--md-table-border);
+  color: var(--md-body);
+}
+.markdown-body th {
+  background: var(--md-table-header);
+  color: var(--md-heading);
+  font-weight: 600;
+}
+
+/* Math / images */
+.markdown-body .math-block { margin: .75em 0; overflow-x: auto; text-align: center; }
+.markdown-body .math-inline,
+.markdown-body .katex { font-size: 1.05em; }
+.markdown-body .math-fallback { color: var(--md-muted); }
+
+/* ── Diff fences ───────────────────────────────────────────────────── */
+
+.markdown-body pre.language-diff code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+.markdown-body pre.wrap.language-diff code { width: 100%; }
+.markdown-body pre.language-diff .hljs-diff-line {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 100%;
+}
+.markdown-body pre.language-diff .hljs-addition,
+.markdown-body pre.language-diff .hljs-deletion {
+  display: inline-grid;
+  grid-template-columns: 1.2ch minmax(0, 1fr);
+  color: var(--md-code-fg);
+}
+.markdown-body pre.language-diff .hljs-diff-marker { text-align: center; color: var(--md-faint); }
+.markdown-body pre.language-diff .hljs-diff-content { min-width: 0; }
+.markdown-body pre.language-diff .hljs-addition {
+  color: var(--md-syn-add);
+  background: color-mix(in srgb, var(--md-syn-add) 12%, transparent);
+}
+.markdown-body pre.language-diff .hljs-deletion {
+  color: var(--md-syn-del);
+  background: color-mix(in srgb, var(--md-syn-del) 12%, transparent);
+}
+.markdown-body pre.language-diff .hljs-addition .hljs-diff-emphasis {
+  background: color-mix(in srgb, var(--md-syn-add) 28%, transparent);
+}
+.markdown-body pre.language-diff .hljs-deletion .hljs-diff-emphasis {
+  background: color-mix(in srgb, var(--md-syn-del) 28%, transparent);
+}
+
+/* File reference chips */
+.markdown-body .file-link code {
+  border-color: color-mix(in srgb, var(--md-link) 30%, var(--md-inline-code-border));
+  color: var(--md-link);
+}

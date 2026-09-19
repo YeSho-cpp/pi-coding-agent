@@ -1,0 +1,75 @@
+import type { ChatTypographyView } from "../model/chatTypography.js";
+import type { ComposerDraftView } from "../model/composerDraftModel.js";
+import type { ContextAttachItemView } from "../model/contextAttachModel.js";
+import type { ConversationItemView } from "../model/conversationModel.js";
+import type { SessionViewModel } from "../model/sessionViewModel.js";
+import type { WebviewPresentationView } from "../model/webviewPresentationModel.js";
+import type { EditorMentionSpecialView, WorkspaceFileCandidateView } from "../model/workspaceFileModel.js";
+
+export type SessionBaseView = Omit<SessionViewModel, "conversationItems">;
+
+export type MarkdownImageFailureReason =
+  | "invalidSource"
+  | "notFound"
+  | "notAFile"
+  | "tooLarge"
+  | "unsupportedType"
+  | "readFailed";
+
+export type MarkdownImageLoadResult =
+  | {
+      ok: true;
+      mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif" | "image/svg+xml";
+      data: string;
+    }
+  | { ok: false; reason: MarkdownImageFailureReason };
+
+export interface CollectionDelta<T> {
+  mode: "replace" | "upsert";
+  items: T[];
+}
+
+export interface PresentationDeltaView extends Omit<WebviewPresentationView, "displayedSession"> {
+  displayedSession: {
+    base: SessionBaseView;
+    conversationItems: CollectionDelta<ConversationItemView>;
+  } | null;
+}
+
+export type HostToWebviewPayload =
+  | { type: "snapshot"; presentation: WebviewPresentationView; draft: ComposerDraftView | null }
+  | { type: "setChatTypography"; typography: ChatTypographyView }
+  | { type: "presentationDelta"; presentation: PresentationDeltaView }
+  | { type: "draftReplacement"; sessionId: string; draft: ComposerDraftView }
+  | { type: "replaceComposerText"; sessionId: string; text: string }
+  | { type: "insertPromptText"; sessionId: string; text: string }
+  | { type: "contextAttachPicked"; items: ContextAttachItemView[]; sessionId?: string }
+  | {
+      type: "editorContextHint";
+      available: boolean;
+      /** true = chip active (sent on submit); false = ghost / inactive */
+      attached?: boolean;
+      hasSelection?: boolean;
+      path?: string;
+      startLine?: number;
+      endLine?: number;
+      label?: string;
+      /** Material icon SVG data URI */
+      iconDataUri?: string;
+    }
+  | { type: "focusComposer" }
+  | { type: "promptResult"; requestId: string; ok: boolean; error?: string }
+  | { type: "markdownImageResult"; requestId: string; sessionId: string; result: MarkdownImageLoadResult }
+  | {
+      type: "forkResult";
+      requestId: string;
+      ok: boolean;
+      cancelled?: boolean;
+      forkSessionId?: string;
+      error?: string;
+    }
+  | { type: "workspaceFileSuggestions"; requestId: string; items: WorkspaceFileCandidateView[]; specials?: EditorMentionSpecialView[]; error?: string }
+  | { type: "toast"; level: "info" | "warning" | "error"; message: string }
+  | { type: "saveImageResult"; requestId: string; ok: boolean; path?: string; error?: string };
+
+export type HostToWebviewMessage = HostToWebviewPayload & { bridgeVersion: string };
