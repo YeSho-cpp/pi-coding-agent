@@ -355,10 +355,10 @@ export class WebviewActionDispatcher {
         return;
       }
       case "listWelcomeResources": {
-        const { readdir } = await import("node:fs/promises");
-        const { homedir } = await import("node:os");
+        const { readdir, stat, readFile } = await import("node:fs/promises");
+        const os = await import("node:os");
         const { join } = await import("node:path");
-        const home = homedir();
+        const home = os.homedir() || process.env.HOME || process.env.USERPROFILE || "";
         const skillsPaths = [
           join(home, ".pi", "agent", "skills"),
           join(home, ".agents", "skills"),
@@ -368,28 +368,55 @@ export class WebviewActionDispatcher {
           join(home, ".pi", "agent", "extensions"),
           ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".pi", "extensions")) ?? []),
         ];
-        const listNames = async (dirs: string[]): Promise<string[]> => {
+        /** Include directories and directory symlinks (e.g. ~/.agents/skills/ego-browser). */
+        const listDirNames = async (dirs: readonly string[]): Promise<string[]> => {
           const names = new Set<string>();
           for (const dir of dirs) {
+            if (!dir) continue;
+            let entries: Awaited<ReturnType<typeof readdir>>;
             try {
-              const entries = await readdir(dir, { withFileTypes: true });
-              for (const entry of entries) {
-                if (entry.isDirectory() || entry.name.endsWith(".md") || entry.name.endsWith(".js") || entry.name.endsWith(".ts")) {
-                  names.add(entry.isDirectory() ? entry.name : entry.name.replace(/\.(md|js|ts)$/, ""));
+              entries = await readdir(dir, { withFileTypes: true });
+            } catch {
+              continue;
+            }
+            for (const entry of entries) {
+              if (entry.name.startsWith(".")) continue;
+              const full = join(dir, entry.name);
+              let isDir = entry.isDirectory();
+              if (!isDir) {
+                try {
+                  isDir = (await stat(full)).isDirectory();
+                } catch {
+                  isDir = false;
                 }
               }
-            } catch { /* missing dir */ }
+              if (isDir) names.add(entry.name);
+              else if (entry.isFile() && /\.(md|js|mjs|ts)$/.test(entry.name)) {
+                names.add(entry.name.replace(/\.(md|js|mjs|ts)$/, ""));
+              }
+            }
           }
           return [...names].sort((a, b) => a.localeCompare(b));
         };
+        const skills = await listDirNames(skillsPaths);
+        // Pi skill-lock may name extra skills not present as loose folders.
+        try {
+          const lockRaw = await readFile(join(home, ".agents", ".skill-lock.json"), "utf8");
+          const lock = JSON.parse(lockRaw) as { skills?: Record<string, unknown> };
+          for (const name of Object.keys(lock.skills ?? {})) {
+            if (name && !name.startsWith(".")) skills.push(name);
+          }
+        } catch { /* optional */ }
+        const uniqueSkills = [...new Set(skills)].sort((a, b) => a.localeCompare(b));
+        const extensions = await listDirNames(extensionsPaths);
         const version = this.#registry.extensionVersion;
         connection.post({
           type: "welcomeResources",
           version,
-          skills: await listNames(skillsPaths),
-          extensions: await listNames(extensionsPaths),
-          skillsPaths,
-          extensionsPaths,
+          skills: uniqueSkills,
+          extensions,
+          skillsPaths: skillsPaths.filter(Boolean),
+          extensionsPaths: extensionsPaths.filter(Boolean),
         });
         return;
       }

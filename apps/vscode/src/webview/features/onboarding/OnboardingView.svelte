@@ -301,7 +301,7 @@
             </button>
           {/if}
         {:else}
-          <div class="ob-top-menu-hint">未发现 skills（~/.pi/agent/skills、~/.agents/skills）</div>
+          <div class="ob-top-menu-hint">未发现 skills（扫描 ~/.pi/agent/skills、~/.agents/skills 等）</div>
         {/if}
       </div>
     {:else if topMenu === "settings"}
