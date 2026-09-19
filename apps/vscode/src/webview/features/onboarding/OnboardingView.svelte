@@ -29,6 +29,13 @@
 
   const extVersion = $derived($presentationStore.extensionVersion ?? "1.0.x");
   const resources = $derived($welcomeResources);
+  /** Prefer live welcomeResources; fall back to presentation snapshot lists. */
+  const skillNames = $derived(
+    (resources?.skills?.length ? resources.skills : ($presentationStore.welcomeSkills ?? [])).slice(),
+  );
+  const extensionNames = $derived(
+    (resources?.extensions?.length ? resources.extensions : ($presentationStore.welcomeExtensions ?? [])).slice(),
+  );
 
   function closeTopMenus(): void {
     topMenu = null;
@@ -270,14 +277,14 @@
       </div>
     {:else if topMenu === "extensions"}
       <div class="ob-top-menu ob-top-menu-left" role="dialog" aria-label="扩展">
-        <div class="ob-top-menu-title">扩展 <span class="count">{resources?.extensions?.length ?? 0}</span></div>
-        {#if resources?.extensions?.length}
+        <div class="ob-top-menu-title">扩展 <span class="count">{extensionNames.length}</span></div>
+        {#if extensionNames.length}
           <div class="ob-top-menu-list">
-            {#each resources.extensions as name (name)}
+            {#each extensionNames as name (name)}
               <div class="ob-top-menu-row">{name}</div>
             {/each}
           </div>
-          {#if resources.extensionsPaths?.length}
+          {#if resources?.extensionsPaths?.length}
             <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "revealPath", path: resources.extensionsPaths[0] }); }}>
               <span class="codicon codicon-folder-opened"></span> 打开扩展目录
             </button>
@@ -288,14 +295,14 @@
       </div>
     {:else if topMenu === "skills"}
       <div class="ob-top-menu ob-top-menu-left" role="dialog" aria-label="技能">
-        <div class="ob-top-menu-title">Skills <span class="count">{resources?.skills?.length ?? 0}</span></div>
-        {#if resources?.skills?.length}
+        <div class="ob-top-menu-title">Skills <span class="count">{skillNames.length}</span></div>
+        {#if skillNames.length}
           <div class="ob-top-menu-list">
-            {#each resources.skills as name (name)}
+            {#each skillNames as name (name)}
               <div class="ob-top-menu-row">{name}</div>
             {/each}
           </div>
-          {#if resources.skillsPaths?.length}
+          {#if resources?.skillsPaths?.length}
             <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "revealPath", path: resources.skillsPaths[0] }); }}>
               <span class="codicon codicon-folder-opened"></span> 打开 skills 目录
             </button>

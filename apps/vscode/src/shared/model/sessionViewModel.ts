@@ -110,6 +110,9 @@ export interface WorkspaceViewModel {
   sessions: SessionSummaryView[];
   /** Historical sessions discovered under ~/.pi/agent for this workspace tree. */
   catalogSessions: CatalogSessionSummaryView[];
+  /** Welcome chrome: discovered Pi skills / extensions (names). */
+  welcomeSkills: string[];
+  welcomeExtensions: string[];
   activeSessionId: string | null;
   activeSession: SessionViewModel | null;
   piAvailable: boolean;

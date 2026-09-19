@@ -218,6 +218,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       this.#queueSidebarComposerText(sessionId, text);
     }
     void (this.#registry as unknown as { forceCatalogRefresh?: () => Promise<void> }).forceCatalogRefresh?.();
+    void (this.#registry as unknown as { refreshWelcomeResources?: () => Promise<void> }).refreshWelcomeResources?.();
   }
 
   detachSidebar(): void {

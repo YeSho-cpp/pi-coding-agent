@@ -11,6 +11,9 @@ export interface WebviewPresentationView {
   sessions: SessionSummaryView[];
   /** On-disk Pi sessions for the welcome/history list. */
   catalogSessions?: CatalogSessionSummaryView[];
+  /** Welcome top bar lists (host-scanned). */
+  welcomeSkills?: string[];
+  welcomeExtensions?: string[];
   /** The sidebar selection. Panel focus never changes this value. */
   activeSessionId: string | null;
   displayedSession: SessionViewModel | null;
