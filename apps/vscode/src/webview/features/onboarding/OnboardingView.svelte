@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CatalogSessionSummaryView, SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
+  import { onMount } from "svelte";
   import { postToHost } from "../../bridge/vscodeBridge";
 
   let {
@@ -101,6 +102,35 @@
   let menuKey = $state<string | null>(null);
   let renameKey = $state<string | null>(null);
   let renameDraft = $state("");
+  let listRoot = $state<HTMLElement | null>(null);
+
+  onMount(() => {
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!menuKey && !renameKey) return;
+      const target = event.target as Element | null;
+      // Clicks on the … button, the open menu, or the rename input keep state; handlers manage those.
+      if (target?.closest?.(".ob-session-more")) return;
+      if (target?.closest?.(".ob-session-menu")) return;
+      if (target?.closest?.(".ob-rename-input")) return;
+      menuKey = null;
+      renameKey = null;
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (menuKey || renameKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        menuKey = null;
+        renameKey = null;
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  });
 
   function toggleMenu(key: string, event: MouseEvent): void {
     event.stopPropagation();
@@ -116,8 +146,10 @@
   }
 
   function commitRename(item: WelcomeItem): void {
-    const name = renameDraft.trim();
     const key = itemKey(item);
+    // Outside click / Esc already dismissed rename — do not save.
+    if (renameKey !== key) return;
+    const name = renameDraft.trim();
     renameKey = null;
     if (!name || name === item.title) return;
     if (item.kind === "live") {
@@ -212,7 +244,7 @@
           <span class="ob-sessions-title">会话</span>
           <span class="ob-sessions-count">{allItems?.length ?? 0}</span>
         </div>
-        <div class="ob-sessions-list">
+        <div class="ob-sessions-list" bind:this={listRoot}>
           {#each visibleItems as item (itemKey(item))}
             {@const key = itemKey(item)}
             <div
