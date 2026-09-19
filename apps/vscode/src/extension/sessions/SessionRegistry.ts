@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { access } from "node:fs/promises";
+import { appendFile, access, unlink } from "node:fs/promises";
 import { basename, normalize, resolve } from "node:path";
 
 import type { RpcExtensionUiResponse, StreamingBehavior, ThinkingLevel } from "@frostime/pi-rpc";
@@ -247,6 +247,50 @@ export class SessionRegistry implements vscode.Disposable {
     const discovery = cwd ? await this.#discoverWorkingDirectories(cwd) : { directories: [] };
     const directory = findSessionWorkingDirectory(discovery.directories, entry.cwd);
     return this.#openSession(entry, Boolean(directory), directory);
+  }
+
+  /** Rename an on-disk (catalog) session by appending Pi `session_info`. */
+  async renameCatalogSession(path: string, name: string): Promise<void> {
+    const normalized = name.trim();
+    if (!normalized) throw new Error("Session name cannot be empty.");
+    const existing = [...this.#records.values()].find((record) => record.sessionFile && samePath(record.sessionFile, path));
+    if (existing?.id && this.#runtimes.has(existing.id)) {
+      await this.rename(existing.id, normalized);
+      await this.refreshCatalogSessions();
+      return;
+    }
+    const line = JSON.stringify({
+      type: "session_info",
+      id: Math.random().toString(16).slice(2, 10),
+      timestamp: new Date().toISOString(),
+      name: normalized,
+    });
+    await appendFile(path, `${line}\n`, "utf8");
+    this.#catalogSessions = this.#catalogSessions.map((item) =>
+      item.path === path ? { ...item, title: normalized } : item);
+    this.#emitChange();
+  }
+
+  /** Delete an on-disk (catalog) session file; closes the live runtime if any. */
+  async deleteCatalogSession(path: string): Promise<void> {
+    const existing = [...this.#records.values()].find((record) => record.sessionFile && samePath(record.sessionFile, path));
+    if (existing?.id && this.#runtimes.has(existing.id)) {
+      const runtime = this.#runtimes.get(existing.id);
+      if (runtime) await runtime.dispose();
+      this.#removeSession(existing.id);
+      if (this.#activeSessionId === existing.id) {
+        this.#activeSessionId = [...this.#runtimes.keys()].at(-1) ?? null;
+      }
+      await this.#persist();
+    }
+    try {
+      await unlink(path);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException)?.code;
+      if (code !== "ENOENT") throw error;
+    }
+    this.#catalogSessions = this.#catalogSessions.filter((item) => item.path !== path);
+    this.#emitChange();
   }
 
   async createSession(ephemeral = false): Promise<string | undefined> {

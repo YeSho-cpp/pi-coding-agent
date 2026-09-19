@@ -86,6 +86,15 @@ const payloadSchema = z.discriminatedUnion("type", [
     type: z.literal("openCatalogSession"),
     path: z.string().min(1).max(4096),
   }),
+  z.object({
+    type: z.literal("renameCatalogSession"),
+    path: z.string().min(1).max(4096),
+    name: z.string().min(1).max(160),
+  }),
+  z.object({
+    type: z.literal("deleteCatalogSession"),
+    path: z.string().min(1).max(4096),
+  }),
   z.object({ type: z.literal("closeSession"), sessionId: z.string().min(1).max(128) }),
   z.object({ type: z.literal("renameSession"), sessionId: z.string().min(1).max(128), name: z.string().max(160) }),
   z.object({ type: z.literal("copyText"), text: z.string().min(1).max(2_000_000) }),

@@ -144,6 +144,14 @@ export class WebviewActionDispatcher {
       case "openCatalogSession":
         await this.#registry.openCatalogSessionByPath(message.path);
         return;
+      case "renameCatalogSession":
+        await this.#registry.renameCatalogSession(message.path, message.name);
+        connection.post({ type: "toast", level: "info", message: "已重命名会话" });
+        return;
+      case "deleteCatalogSession":
+        await this.#registry.deleteCatalogSession(message.path);
+        connection.post({ type: "toast", level: "info", message: "已删除会话" });
+        return;
       case "closeSession":
         await this.#registry.closeSession(message.sessionId);
         return;

@@ -86,11 +86,55 @@
   const hasItems = $derived((allItems?.length ?? 0) > 0);
 
   function openItem(item: WelcomeItem): void {
+    if (menuKey || renameKey) return;
     if (item.kind === "live") {
       postToHost({ type: "activateSession", sessionId: item.id });
       return;
     }
     postToHost({ type: "openCatalogSession", path: item.path });
+  }
+
+  function itemKey(item: WelcomeItem): string {
+    return item.kind === "live" ? `live:${item.id}` : `catalog:${item.path}`;
+  }
+
+  let menuKey = $state<string | null>(null);
+  let renameKey = $state<string | null>(null);
+  let renameDraft = $state("");
+
+  function toggleMenu(key: string, event: MouseEvent): void {
+    event.stopPropagation();
+    menuKey = menuKey === key ? null : key;
+    renameKey = null;
+  }
+
+  function beginRename(item: WelcomeItem, event: MouseEvent): void {
+    event.stopPropagation();
+    menuKey = null;
+    renameKey = itemKey(item);
+    renameDraft = item.title;
+  }
+
+  function commitRename(item: WelcomeItem): void {
+    const name = renameDraft.trim();
+    const key = itemKey(item);
+    renameKey = null;
+    if (!name || name === item.title) return;
+    if (item.kind === "live") {
+      postToHost({ type: "renameSession", sessionId: item.id, name });
+      return;
+    }
+    postToHost({ type: "renameCatalogSession", path: item.path, name });
+  }
+
+  function removeItem(item: WelcomeItem, event: MouseEvent): void {
+    event.stopPropagation();
+    menuKey = null;
+    if (item.kind === "live") {
+      postToHost({ type: "closeSession", sessionId: item.id });
+      return;
+    }
+    postToHost({ type: "deleteCatalogSession", path: item.path });
   }
 
   function createSession(): void {
@@ -169,21 +213,37 @@
           <span class="ob-sessions-count">{allItems?.length ?? 0}</span>
         </div>
         <div class="ob-sessions-list">
-          {#each visibleItems as item (item.kind === "live" ? item.id : item.path)}
-            <button
-              type="button"
-              class="ob-session-item"
+          {#each visibleItems as item (itemKey(item))}
+            {@const key = itemKey(item)}
+            <div
+              class="ob-session-row"
               class:active={item.kind === "live" && item.isActive}
+              role="button"
+              tabindex="0"
               title={item.kind === "live" ? item.id : item.path}
               onclick={() => openItem(item)}
+              onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItem(item); } }}
             >
               <span class="ob-session-dot" class:live={item.kind === "live" && (item.status === "运行中" || item.status === "需要操作")}></span>
               <span class="ob-session-copy">
-                <span class="ob-session-title">
-                  {item.title}
-                  {#if item.kind === "live" && item.ephemeral}<span class="ephemeral-badge">临时</span>{/if}
-                  {#if item.kind === "catalog"}<span class="ephemeral-badge">历史</span>{/if}
-                </span>
+                {#if renameKey === key}
+                  <input
+                    class="ob-rename-input"
+                    bind:value={renameDraft}
+                    onclick={(e) => e.stopPropagation()}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); commitRename(item); }
+                      if (e.key === "Escape") { e.preventDefault(); renameKey = null; }
+                    }}
+                    onblur={() => commitRename(item)}
+                  />
+                {:else}
+                  <span class="ob-session-title">
+                    {item.title}
+                    {#if item.kind === "live" && item.ephemeral}<span class="ephemeral-badge">临时</span>{/if}
+                    {#if item.kind === "catalog"}<span class="ephemeral-badge">历史</span>{/if}
+                  </span>
+                {/if}
                 <span class="ob-session-meta">
                   {#if item.cwdLabel}
                     <span class="session-cwd-pill">{item.cwdLabel}</span>
@@ -193,7 +253,26 @@
                   </span>
                 </span>
               </span>
-            </button>
+              <button
+                type="button"
+                class="ob-session-more"
+                aria-label="会话更多操作"
+                title="更多"
+                onclick={(e) => toggleMenu(key, e)}
+              >
+                <span class="codicon codicon-ellipsis" aria-hidden="true"></span>
+              </button>
+              {#if menuKey === key}
+                <div class="ob-session-menu" role="menu">
+                  <button type="button" role="menuitem" onclick={(e) => beginRename(item, e)}>
+                    <span class="codicon codicon-edit" aria-hidden="true"></span> 重命名会话
+                  </button>
+                  <button type="button" role="menuitem" class="danger" onclick={(e) => removeItem(item, e)}>
+                    <span class="codicon codicon-trash" aria-hidden="true"></span> 删除会话
+                  </button>
+                </div>
+              {/if}
+            </div>
           {/each}
         </div>
         {#if hiddenCount > 0 && !expanded}
@@ -352,24 +431,87 @@
     flex-direction: column;
     gap: 2px;
   }
-  .ob-session-item {
+  .ob-session-row {
     width: 100%;
     min-width: 0;
     display: grid;
-    grid-template-columns: 10px minmax(0, 1fr);
+    grid-template-columns: 10px minmax(0, 1fr) auto;
     gap: 8px;
-    align-items: start;
-    padding: 8px 8px;
-    border: 0;
+    align-items: center;
+    padding: 8px 6px 8px 8px;
     border-radius: 8px;
     background: transparent;
     color: var(--frost-text);
+    cursor: pointer;
+    position: relative;
+  }
+  .ob-session-row:hover,
+  .ob-session-row.active {
+    background: var(--frost-hover);
+  }
+  .ob-session-more {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--frost-muted);
+    cursor: pointer;
+    opacity: 0.55;
+  }
+  .ob-session-row:hover .ob-session-more,
+  .ob-session-more:focus-visible {
+    opacity: 1;
+  }
+  .ob-session-more:hover {
+    color: var(--frost-text);
+    background: var(--frost-hover);
+  }
+  .ob-session-menu {
+    position: absolute;
+    top: calc(100% - 4px);
+    right: 6px;
+    z-index: 30;
+    min-width: 148px;
+    padding: 4px;
+    border: 1px solid var(--frost-border);
+    border-radius: 8px;
+    background: var(--frost-surface-raised);
+    box-shadow: var(--frost-shadow);
+  }
+  .ob-session-menu button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--frost-text);
+    font-size: 12px;
     text-align: left;
     cursor: pointer;
   }
-  .ob-session-item:hover,
-  .ob-session-item.active {
+  .ob-session-menu button:hover {
     background: var(--frost-hover);
+  }
+  .ob-session-menu button.danger {
+    color: var(--frost-error);
+  }
+  .ob-rename-input {
+    width: 100%;
+    min-width: 0;
+    height: 24px;
+    padding: 2px 6px;
+    border: 1px solid var(--frost-focus);
+    border-radius: 5px;
+    background: var(--frost-input-bg);
+    color: var(--frost-text);
+    font-size: 12.5px;
   }
   .ob-session-dot {
     margin-top: 6px;
