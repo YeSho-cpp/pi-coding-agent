@@ -172,20 +172,35 @@ export class SessionRegistry implements vscode.Disposable {
   #catalogSessions: CatalogSessionSummaryView[] = [];
   #catalogRefreshInFlight = false;
 
-  /** Discover on-disk Pi sessions: current workspace first, then global recent history. */
+  /** Discover on-disk Pi sessions for the **current workspace folder only**. */
   async refreshCatalogSessions(): Promise<void> {
     if (this.#catalogRefreshInFlight) return;
     this.#catalogRefreshInFlight = true;
     try {
       const cwd = activeWorkspaceFolder()?.uri.fsPath;
+      if (!cwd) {
+        if (this.#catalogSessions.length) {
+          this.#catalogSessions = [];
+          this.#emitChange();
+        }
+        return;
+      }
+
       const runtimeFiles = new Set(
         [...this.#records.values()].map((r) => r.sessionFile).filter(Boolean) as string[],
       );
       const byPath = new Map<string, CatalogSessionSummaryView>();
 
+      const inWorkspace = (sessionCwd: string): boolean => {
+        const a = sessionCwd.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+        const b = cwd.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+        return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+      };
+
       const pushEntries = (entries: readonly PiSessionCatalogEntry[]): void => {
         for (const entry of entries) {
-          if (!entry?.path || runtimeFiles.has(entry.path) || byPath.has(entry.path)) continue;
+          if (!entry?.path || !entry.cwd || !inWorkspace(entry.cwd)) continue;
+          if (runtimeFiles.has(entry.path) || byPath.has(entry.path)) continue;
           byPath.set(entry.path, {
             path: entry.path,
             title: entry.title || "未命名会话",
@@ -197,16 +212,21 @@ export class SessionRegistry implements vscode.Disposable {
         }
       };
 
-      if (cwd) {
+      // Primary: Pi catalog scoped to this workspace + its git worktrees.
+      try {
         const discovery = await this.#discoverWorkingDirectories(cwd);
         const configuration = readConfiguration(workspaceUriForPath(cwd));
         const workspaceEntries = await discoverPiSessions(discovery.directories, configuration.piArguments);
         pushEntries(workspaceEntries);
+      } catch {
+        /* fall through to path filter */
       }
 
-      // Global recent sessions (all workspaces) so the welcome list looks like a full history.
-      const globalEntries = await discoverRecentPiSessionsGlobally(40);
-      pushEntries(globalEntries);
+      // Fallback: scan agent store and keep only sessions whose cwd is this folder tree.
+      if (byPath.size === 0) {
+        const globalEntries = await discoverRecentPiSessionsGlobally(200);
+        pushEntries(globalEntries);
+      }
 
       this.#catalogSessions = [...byPath.values()]
         .sort((a, b) => b.updatedAt - a.updatedAt)

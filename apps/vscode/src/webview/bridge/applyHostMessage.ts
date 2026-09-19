@@ -25,7 +25,10 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
       applyChatTypography(message.typography);
       break;
     case "snapshot":
-      presentationStore.set(message.presentation);
+      presentationStore.set({
+        ...message.presentation,
+        catalogSessions: message.presentation.catalogSessions ?? [],
+      });
       if (message.presentation.displayedSession && message.draft) {
         applyHostDraft(message.presentation.displayedSession.id, message.draft);
       }
@@ -34,13 +37,21 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
     case "presentationDelta": {
       let displayedSession: SessionViewModel | null = null;
       presentationStore.update((current) => {
-        const incoming = message.presentation.displayedSession;
-        const existing = current.displayedSession?.id === incoming?.base.id ? current.displayedSession : null;
-        displayedSession = incoming ? {
-          ...incoming.base,
-          conversationItems: mergeCollection(existing?.conversationItems ?? [], incoming.conversationItems),
+        const incoming = message.presentation;
+        const incomingBaseId = incoming.displayedSession?.base.id;
+        const existing = current.displayedSession?.id === incomingBaseId ? current.displayedSession : null;
+        displayedSession = incoming.displayedSession ? {
+          ...incoming.displayedSession.base,
+          conversationItems: mergeCollection(
+            existing?.conversationItems ?? [],
+            incoming.displayedSession.conversationItems,
+          ),
         } : null;
-        return { ...message.presentation, displayedSession };
+        return {
+          ...incoming,
+          catalogSessions: incoming.catalogSessions ?? current.catalogSessions ?? [],
+          displayedSession,
+        };
       });
       applyComposerSeed(displayedSession, message.presentation.composerDraftAuthority);
       break;

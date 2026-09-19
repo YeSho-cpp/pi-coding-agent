@@ -161,7 +161,7 @@
       {#if !hasItems}
         <div class="ob-sessions-empty">
           <strong>开始一个 Pi 会话</strong>
-          <span>新建对话，或恢复本工作区的历史会话。</span>
+          <span>新建对话，或恢复本文件夹下的历史 Pi 会话。</span>
         </div>
       {:else}
         <div class="ob-sessions-head">
