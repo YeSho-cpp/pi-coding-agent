@@ -111,13 +111,12 @@
           <span class="ob-sessions-title">会话</span>
           <span class="ob-sessions-count">{sessions.length}</span>
         </div>
-        <div class="ob-sessions-list" role="list">
+        <div class="ob-sessions-list">
           {#each visibleSessions as s (s.id)}
             <button
               type="button"
               class="ob-session-item"
               class:active={s.isActive}
-              role="listitem"
               title={s.cwd}
               onclick={() => openSession(s.id)}
             >

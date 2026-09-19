@@ -27,7 +27,7 @@
   {:else if !$presentationStore.workspacePath}
     <OnboardingView noWorkspace />
   {:else if !$presentationStore.displayedSession}
-    <OnboardingView />
+    <OnboardingView sessions={$presentationStore.sessions} />
   {:else}
     <SidebarShell
       sessions={$presentationStore.sessions}
