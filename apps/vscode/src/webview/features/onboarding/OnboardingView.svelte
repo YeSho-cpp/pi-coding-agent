@@ -37,6 +37,12 @@
     return `${Math.floor(days / 365)} 年前`;
   }
 
+  function shortProjectLabel(cwd: string): string {
+    if (!cwd) return "历史";
+    const parts = cwd.replace(/\\/g, "/").split("/").filter(Boolean);
+    return parts[parts.length - 1] || "历史";
+  }
+
   function statusLabel(s: SessionSummaryView): string {
     if (s.requiresUserInput) return "需要操作";
     if (s.status === "running") return "运行中";
@@ -71,7 +77,7 @@
         path: c.path,
         title: c.title || "未命名会话",
         when: formatWhen(c.updatedAt),
-        cwdLabel: c.cwd.split("/").pop() || undefined,
+        cwdLabel: shortProjectLabel(c.cwd),
         ...(c.preview ? { preview: c.preview } : {}),
       }));
     return [...live, ...catalog];

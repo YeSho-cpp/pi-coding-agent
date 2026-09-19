@@ -13,7 +13,7 @@ import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
-import { discoverPiSessions, readPiSessionMetadata, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
+import { discoverPiSessions, discoverRecentPiSessionsGlobally, readPiSessionMetadata, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { SessionPersistence } from "./SessionPersistence.js";
@@ -172,37 +172,45 @@ export class SessionRegistry implements vscode.Disposable {
   #catalogSessions: CatalogSessionSummaryView[] = [];
   #catalogRefreshInFlight = false;
 
-  /** Discover on-disk Pi sessions for the current workspace (welcome list). */
+  /** Discover on-disk Pi sessions: current workspace first, then global recent history. */
   async refreshCatalogSessions(): Promise<void> {
     if (this.#catalogRefreshInFlight) return;
     this.#catalogRefreshInFlight = true;
     try {
       const cwd = activeWorkspaceFolder()?.uri.fsPath;
-      if (!cwd) {
-        if (this.#catalogSessions.length) {
-          this.#catalogSessions = [];
-          this.#emitChange();
-        }
-        return;
-      }
-      const discovery = await this.#discoverWorkingDirectories(cwd);
-      const configuration = readConfiguration(workspaceUriForPath(cwd));
-      const entries = await discoverPiSessions(discovery.directories, configuration.piArguments);
       const runtimeFiles = new Set(
         [...this.#records.values()].map((r) => r.sessionFile).filter(Boolean) as string[],
       );
-      this.#catalogSessions = entries
-        .filter((entry) => !runtimeFiles.has(entry.path))
+      const byPath = new Map<string, CatalogSessionSummaryView>();
+
+      const pushEntries = (entries: readonly PiSessionCatalogEntry[]): void => {
+        for (const entry of entries) {
+          if (!entry?.path || runtimeFiles.has(entry.path) || byPath.has(entry.path)) continue;
+          byPath.set(entry.path, {
+            path: entry.path,
+            title: entry.title || "未命名会话",
+            cwd: entry.cwd,
+            updatedAt: entry.updatedAt,
+            ...(entry.sessionId ? { sessionId: entry.sessionId } : {}),
+            ...(entry.preview ? { preview: entry.preview } : {}),
+          });
+        }
+      };
+
+      if (cwd) {
+        const discovery = await this.#discoverWorkingDirectories(cwd);
+        const configuration = readConfiguration(workspaceUriForPath(cwd));
+        const workspaceEntries = await discoverPiSessions(discovery.directories, configuration.piArguments);
+        pushEntries(workspaceEntries);
+      }
+
+      // Global recent sessions (all workspaces) so the welcome list looks like a full history.
+      const globalEntries = await discoverRecentPiSessionsGlobally(40);
+      pushEntries(globalEntries);
+
+      this.#catalogSessions = [...byPath.values()]
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .slice(0, 50)
-        .map((entry) => ({
-          path: entry.path,
-          title: entry.title,
-          cwd: entry.cwd,
-          updatedAt: entry.updatedAt,
-          ...(entry.sessionId ? { sessionId: entry.sessionId } : {}),
-          ...(entry.preview ? { preview: entry.preview } : {}),
-        }));
+        .slice(0, 40);
       this.#emitChange();
     } catch {
       // Catalog is optional for welcome UI; keep previous list on failure.
