@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-09-19
+
+### Changed
+
+- Redesign empty/welcome view: large Pi logo, session list (collapse after 5 with 更多), composer strip at bottom.
+
 ## [1.0.2] - 2026-09-19
 
 ### Changed

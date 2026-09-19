@@ -24,7 +24,7 @@
   {#if externalized}
     <ExternalizedSessionView {session} />
   {:else if session.status === "failed"}
-    <OnboardingView {session} />
+    <OnboardingView {session} {sessions} />
   {:else}
     <SessionInteraction {session} surfaceKind="sidebar" {draftAuthority} />
   {/if}
