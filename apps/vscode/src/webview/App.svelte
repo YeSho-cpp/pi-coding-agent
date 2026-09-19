@@ -3,7 +3,11 @@
   import OnboardingView from "./features/onboarding/OnboardingView.svelte";
   import PanelShell from "./shell/PanelShell.svelte";
   import SidebarShell from "./shell/SidebarShell.svelte";
-  import { presentationStore, toastStore } from "./state/sessionViewStore.svelte";
+  import {
+    pendingSessionOpen,
+    presentationStore,
+    toastStore,
+  } from "./state/sessionViewStore.svelte";
 
   $effect(() => {
     const presentation = $presentationStore;
@@ -14,6 +18,10 @@
           ...(presentation.displayedSession ? [presentation.displayedSession.id] : []),
         ];
     pruneAnnotationReviews(sessionIds);
+  });
+
+  $effect(() => {
+    if ($presentationStore.displayedSession) pendingSessionOpen.set(false);
   });
 </script>
 
@@ -27,10 +35,17 @@
   {:else if !$presentationStore.workspacePath}
     <OnboardingView noWorkspace />
   {:else if !$presentationStore.displayedSession}
-    <OnboardingView
-      sessions={$presentationStore.sessions}
-      catalogSessions={$presentationStore.catalogSessions ?? []}
-    />
+    {#if $pendingSessionOpen}
+      <section class="session-opening" role="status">
+        <span class="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"></span>
+        <p>正在打开 Pi 会话…</p>
+      </section>
+    {:else}
+      <OnboardingView
+        sessions={$presentationStore.sessions}
+        catalogSessions={$presentationStore.catalogSessions ?? []}
+      />
+    {/if}
   {:else}
     <SidebarShell
       sessions={$presentationStore.sessions}
@@ -53,6 +68,17 @@
 
 <style>
 .removed-panel-session { margin: auto; color: var(--frost-muted); }
+.session-opening {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--frost-muted);
+  font-size: 12px;
+}
+.session-opening p { margin: 0; }
 .toast-stack {
   position: fixed;
   z-index: 150;

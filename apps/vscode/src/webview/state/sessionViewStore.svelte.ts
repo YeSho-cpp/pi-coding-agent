@@ -16,6 +16,8 @@ export const EMPTY_PRESENTATION: WebviewPresentationView = {
 
 export const presentationStore = writable<WebviewPresentationView>(EMPTY_PRESENTATION);
 export const composerFocusTick = writable(0);
+/** True while the welcome list is opening a session — avoids flashing the welcome UI. */
+export const pendingSessionOpen = writable(false);
 
 export interface ToastItem {
   id: number;

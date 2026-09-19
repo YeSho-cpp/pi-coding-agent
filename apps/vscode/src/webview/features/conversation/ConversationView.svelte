@@ -83,16 +83,14 @@
   <div class="conversation" bind:this={scroller} onscroll={handleScroll}>
     <div class="conversation-inner" bind:this={content}>
       {#if session.conversationItems.length === 0}
-        <div class="conversation-empty frostui-empty-chat">
-          <div class="empty-orbit" aria-hidden="true">
-            <svg viewBox="0 0 80 80" width="120" height="120">
-              <rect x="6" y="6" width="68" height="68" rx="18" fill="none" stroke="currentColor" stroke-width="2.5" opacity=".5"/>
-              <text x="40" y="52" text-anchor="middle" font-size="38" font-family="Georgia, serif" fill="currentColor">π</text>
-            </svg>
-          </div>
-          <div class="empty-brand">Pi Coding Agent</div>
-          <h2>What are you working on?</h2>
-          <p>Ask Pi to inspect code, make changes, run commands, or explain this project.</p>
+        <div class="conversation-empty conversation-empty-plain" role="status">
+          {#if session.historyStatus === "loading" || session.historyStatus === "queued" || session.status === "starting" || session.status === "queued"}
+            <p class="empty-title">正在加载会话…</p>
+            <p class="empty-hint">从磁盘恢复 Pi 会话历史。</p>
+          {:else}
+            <p class="empty-title">开始对话</p>
+            <p class="empty-hint">让 Pi 检查代码、修改文件、执行命令，或解释当前项目。</p>
+          {/if}
         </div>
       {:else}
         {#each session.conversationItems as item (item.id)}
@@ -202,6 +200,27 @@
   text-transform: uppercase;
   font-weight: 600;
   color: color-mix(in srgb, var(--frost-accent) 75%, var(--frost-muted));
+}
+.conversation-empty-plain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 180px;
+  text-align: center;
+  color: var(--frost-muted);
+}
+.conversation-empty-plain .empty-title {
+  margin: 0;
+  color: var(--frost-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.conversation-empty-plain .empty-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--frost-muted);
 }
 .conversation-inner { padding-top: 14px; padding-bottom: 34px; }
 .queued-follow-ups { display: grid; gap: 8px; margin: 4px 0 10px; }

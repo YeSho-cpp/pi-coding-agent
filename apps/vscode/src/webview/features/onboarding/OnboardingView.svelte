@@ -2,6 +2,7 @@
   import type { CatalogSessionSummaryView, SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
   import { onMount } from "svelte";
   import { postToHost } from "../../bridge/vscodeBridge";
+  import { pendingSessionOpen } from "../../state/sessionViewStore.svelte";
 
   let {
     session = null,
@@ -88,6 +89,7 @@
 
   function openItem(item: WelcomeItem): void {
     if (menuKey || renameKey) return;
+    pendingSessionOpen.set(true);
     if (item.kind === "live") {
       postToHost({ type: "activateSession", sessionId: item.id });
       return;

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-09-19
+
+### Fixed
+
+- Opening a session no longer flashes the welcome/π empty UI: pending open shows a short loading state.
+- Removed legacy conversation empty watermark (π + PI CODING AGENT); simple empty/loading text instead.
+
 ## [1.0.10] - 2026-09-19
 
 ### Fixed
