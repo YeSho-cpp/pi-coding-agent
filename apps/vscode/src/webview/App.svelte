@@ -27,13 +27,17 @@
   {:else if !$presentationStore.workspacePath}
     <OnboardingView noWorkspace />
   {:else if !$presentationStore.displayedSession}
-    <OnboardingView sessions={$presentationStore.sessions} />
+    <OnboardingView
+      sessions={$presentationStore.sessions}
+      catalogSessions={$presentationStore.catalogSessions ?? []}
+    />
   {:else}
     <SidebarShell
       sessions={$presentationStore.sessions}
       session={$presentationStore.displayedSession}
       externalized={$presentationStore.sidebarSessionExternalized}
       draftAuthority={$presentationStore.composerDraftAuthority}
+      catalogSessions={$presentationStore.catalogSessions ?? []}
     />
   {/if}
 

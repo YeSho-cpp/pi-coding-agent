@@ -7,13 +7,13 @@ import * as vscode from "vscode";
 
 import type { WebviewImageInput } from "../../shared/bridge/webviewToHost.js";
 import type { QuestionDraftSubmission } from "../../shared/question-tool/questionToolProtocol.js";
-import type { SessionRuntimeStatus, SessionSummaryView, SessionViewModel, WorkspaceViewModel } from "../../shared/model/sessionViewModel.js";
+import type { CatalogSessionSummaryView, SessionRuntimeStatus, SessionSummaryView, SessionViewModel, WorkspaceViewModel } from "../../shared/model/sessionViewModel.js";
 import { readConfiguration } from "../configuration/readConfiguration.js";
 import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
-import { readPiSessionMetadata, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
+import { discoverPiSessions, readPiSessionMetadata, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { SessionPersistence } from "./SessionPersistence.js";
@@ -111,6 +111,8 @@ export class SessionRegistry implements vscode.Disposable {
     if (!vscode.workspace.workspaceFolders?.length) return;
     await this.#reconcilePersistedWorkingDirectories();
     await this.#repairGeneratedTitles();
+    // Load on-disk Pi sessions for the welcome list (non-blocking).
+    void this.refreshCatalogSessions();
     // Never invent a new session on open. Empty workspaces stay on the onboarding home until
     // the user creates or resumes a session. Optionally start only an already-selected one.
     const active = this.#activeSessionId ? this.#runtimes.get(this.#activeSessionId) : undefined;
@@ -159,11 +161,64 @@ export class SessionRegistry implements vscode.Disposable {
       workspaceName: folder?.name ?? "No workspace",
       workspacePath: folder?.uri.fsPath ?? "",
       sessions,
+      catalogSessions: this.#catalogSessions,
       activeSessionId: this.#activeSessionId,
       activeSession: activeView,
       piAvailable: !piError,
       ...(piError ? { piError } : {}),
     };
+  }
+
+  #catalogSessions: CatalogSessionSummaryView[] = [];
+  #catalogRefreshInFlight = false;
+
+  /** Discover on-disk Pi sessions for the current workspace (welcome list). */
+  async refreshCatalogSessions(): Promise<void> {
+    if (this.#catalogRefreshInFlight) return;
+    this.#catalogRefreshInFlight = true;
+    try {
+      const cwd = activeWorkspaceFolder()?.uri.fsPath;
+      if (!cwd) {
+        if (this.#catalogSessions.length) {
+          this.#catalogSessions = [];
+          this.#emitChange();
+        }
+        return;
+      }
+      const discovery = await this.#discoverWorkingDirectories(cwd);
+      const configuration = readConfiguration(workspaceUriForPath(cwd));
+      const entries = await discoverPiSessions(discovery.directories, configuration.piArguments);
+      const runtimeFiles = new Set(
+        [...this.#records.values()].map((r) => r.sessionFile).filter(Boolean) as string[],
+      );
+      this.#catalogSessions = entries
+        .filter((entry) => !runtimeFiles.has(entry.path))
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, 50)
+        .map((entry) => ({
+          path: entry.path,
+          title: entry.title,
+          cwd: entry.cwd,
+          updatedAt: entry.updatedAt,
+          ...(entry.sessionId ? { sessionId: entry.sessionId } : {}),
+          ...(entry.preview ? { preview: entry.preview } : {}),
+        }));
+      this.#emitChange();
+    } catch {
+      // Catalog is optional for welcome UI; keep previous list on failure.
+    } finally {
+      this.#catalogRefreshInFlight = false;
+    }
+  }
+
+  /** Open a historical session by absolute JSONL path. */
+  async openCatalogSessionByPath(path: string): Promise<string> {
+    const entry = await readPiSessionMetadata(path);
+    if (!entry) throw new Error("The selected Pi session file could not be read.");
+    const cwd = activeWorkspaceFolder()?.uri.fsPath;
+    const discovery = cwd ? await this.#discoverWorkingDirectories(cwd) : { directories: [] };
+    const directory = findSessionWorkingDirectory(discovery.directories, entry.cwd);
+    return this.#openSession(entry, Boolean(directory), directory);
   }
 
   async createSession(ephemeral = false): Promise<string | undefined> {

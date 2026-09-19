@@ -94,10 +94,22 @@ export interface SessionViewModel {
   conversationContentRevision: number;
 }
 
+/** On-disk Pi session catalog entry (resume history), not necessarily a live runtime. */
+export interface CatalogSessionSummaryView {
+  path: string;
+  title: string;
+  cwd: string;
+  updatedAt: number;
+  sessionId?: string;
+  preview?: string;
+}
+
 export interface WorkspaceViewModel {
   workspaceName: string;
   workspacePath: string;
   sessions: SessionSummaryView[];
+  /** Historical sessions discovered under ~/.pi/agent for this workspace tree. */
+  catalogSessions: CatalogSessionSummaryView[];
   activeSessionId: string | null;
   activeSession: SessionViewModel | null;
   piAvailable: boolean;

@@ -242,6 +242,7 @@ export class WebviewConnection implements vscode.Disposable {
       workspaceName: workspace.workspaceName,
       workspacePath: workspace.workspacePath,
       sessions: workspace.sessions,
+      catalogSessions: workspace.catalogSessions ?? [],
       activeSessionId: workspace.activeSessionId,
       displayedSession,
       composerDraftAuthority: displayedSession && this.#hostOwnsDraft(displayedSession.id) ? "host" : "webview",

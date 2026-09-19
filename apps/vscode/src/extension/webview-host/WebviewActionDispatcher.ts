@@ -141,6 +141,9 @@ export class WebviewActionDispatcher {
       case "activateSession":
         await this.#registry.activateSession(message.sessionId);
         return;
+      case "openCatalogSession":
+        await this.#registry.openCatalogSessionByPath(message.path);
+        return;
       case "closeSession":
         await this.#registry.closeSession(message.sessionId);
         return;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
+  import type { CatalogSessionSummaryView, SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
 
   import OnboardingView from "../features/onboarding/OnboardingView.svelte";
   import ExternalizedSessionView from "../features/sessions/ExternalizedSessionView.svelte";
@@ -11,11 +11,13 @@
     session,
     externalized,
     draftAuthority,
+    catalogSessions = [],
   }: {
     sessions: SessionSummaryView[];
     session: SessionViewModel;
     externalized: boolean;
     draftAuthority: "webview" | "host";
+    catalogSessions?: CatalogSessionSummaryView[];
   } = $props();
 </script>
 
@@ -24,7 +26,7 @@
   {#if externalized}
     <ExternalizedSessionView {session} />
   {:else if session.status === "failed"}
-    <OnboardingView {session} {sessions} />
+    <OnboardingView {session} {sessions} {catalogSessions} />
   {:else}
     <SessionInteraction {session} surfaceKind="sidebar" {draftAuthority} />
   {/if}

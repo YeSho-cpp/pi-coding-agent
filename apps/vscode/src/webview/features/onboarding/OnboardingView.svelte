@@ -1,14 +1,16 @@
 <script lang="ts">
-  import type { SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
+  import type { CatalogSessionSummaryView, SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
   import { postToHost } from "../../bridge/vscodeBridge";
 
   let {
     session = null,
     sessions = [],
+    catalogSessions = [],
     noWorkspace = false,
   }: {
     session?: SessionViewModel | null;
     sessions?: SessionSummaryView[];
+    catalogSessions?: CatalogSessionSummaryView[];
     noWorkspace?: boolean;
   } = $props();
 
@@ -16,8 +18,24 @@
   let expanded = $state(false);
   let draft = $state("");
 
-  const visibleSessions = $derived(expanded ? sessions : sessions.slice(0, VISIBLE));
-  const hiddenCount = $derived(Math.max(0, sessions.length - VISIBLE));
+  type WelcomeItem =
+    | { kind: "live"; id: string; title: string; isActive: boolean; status: string; cwdLabel?: string; ephemeral?: boolean }
+    | { kind: "catalog"; path: string; title: string; when: string; cwdLabel?: string; preview?: string };
+
+  function formatWhen(ts: number): string {
+    const diff = Date.now() - ts;
+    if (!Number.isFinite(ts) || ts <= 0) return "";
+    const min = Math.floor(diff / 60_000);
+    if (min < 1) return "刚刚";
+    if (min < 60) return `${min} 分钟前`;
+    const hours = Math.floor(min / 60);
+    if (hours < 24) return `${hours} 小时前`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} 天前`;
+    if (days < 30) return `${Math.floor(days / 7)} 周前`;
+    if (days < 365) return `${Math.floor(days / 30)} 个月前`;
+    return `${Math.floor(days / 365)} 年前`;
+  }
 
   function statusLabel(s: SessionSummaryView): string {
     if (s.requiresUserInput) return "需要操作";
@@ -31,8 +49,44 @@
     return "就绪";
   }
 
-  function openSession(id: string): void {
-    postToHost({ type: "activateSession", sessionId: id });
+  const allItems = $derived<WelcomeItem[]>(() => {
+    const live: WelcomeItem[] = sessions.map((s) => ({
+      kind: "live",
+      id: s.id,
+      title: s.title,
+      isActive: s.isActive,
+      status: statusLabel(s),
+      ...(s.workingDirectoryLabel ? { cwdLabel: s.workingDirectoryLabel } : {}),
+      ephemeral: s.isEphemeral,
+    }));
+    const openFiles = new Set(
+      sessions
+        .map((s) => s.cwd)
+        .filter(Boolean),
+    );
+    const catalog: WelcomeItem[] = catalogSessions
+      .filter((c) => c.path)
+      .map((c) => ({
+        kind: "catalog",
+        path: c.path,
+        title: c.title || "未命名会话",
+        when: formatWhen(c.updatedAt),
+        cwdLabel: c.cwd.split("/").pop() || undefined,
+        ...(c.preview ? { preview: c.preview } : {}),
+      }));
+    return [...live, ...catalog];
+  });
+
+  const visibleItems = $derived(expanded ? allItems : allItems.slice(0, VISIBLE));
+  const hiddenCount = $derived(Math.max(0, allItems.length - VISIBLE));
+  const hasItems = $derived(allItems.length > 0);
+
+  function openItem(item: WelcomeItem): void {
+    if (item.kind === "live") {
+      postToHost({ type: "activateSession", sessionId: item.id });
+      return;
+    }
+    postToHost({ type: "openCatalogSession", path: item.path });
   }
 
   function createSession(): void {
@@ -44,7 +98,6 @@
   }
 
   function sendOrStart(): void {
-    // Session opens; type the first prompt in the session composer.
     createSession();
   }
 
@@ -99,9 +152,9 @@
       </div>
     </section>
   {:else}
-    <!-- 2) Session list (same store as terminal pi) -->
+    <!-- 2) Session list (runtime + on-disk catalog) -->
     <section class="ob-sessions" aria-label="会话">
-      {#if sessions.length === 0}
+      {#if !hasItems}
         <div class="ob-sessions-empty">
           <strong>开始一个 Pi 会话</strong>
           <span>新建对话，或恢复本工作区的历史会话。</span>
@@ -109,28 +162,31 @@
       {:else}
         <div class="ob-sessions-head">
           <span class="ob-sessions-title">会话</span>
-          <span class="ob-sessions-count">{sessions.length}</span>
+          <span class="ob-sessions-count">{allItems.length}</span>
         </div>
         <div class="ob-sessions-list">
-          {#each visibleSessions as s (s.id)}
+          {#each visibleItems as item (item.kind === "live" ? item.id : item.path)}
             <button
               type="button"
               class="ob-session-item"
-              class:active={s.isActive}
-              title={s.cwd}
-              onclick={() => openSession(s.id)}
+              class:active={item.kind === "live" && item.isActive}
+              title={item.kind === "live" ? item.id : item.path}
+              onclick={() => openItem(item)}
             >
-              <span class="ob-session-dot" class:live={s.status === "running" || s.requiresUserInput}></span>
+              <span class="ob-session-dot" class:live={item.kind === "live" && (item.status === "运行中" || item.status === "需要操作")}></span>
               <span class="ob-session-copy">
                 <span class="ob-session-title">
-                  {s.title}
-                  {#if s.isEphemeral}<span class="ephemeral-badge">临时</span>{/if}
+                  {item.title}
+                  {#if item.kind === "live" && item.ephemeral}<span class="ephemeral-badge">临时</span>{/if}
+                  {#if item.kind === "catalog"}<span class="ephemeral-badge">历史</span>{/if}
                 </span>
                 <span class="ob-session-meta">
-                  {#if s.workingDirectoryLabel}
-                    <span class="session-cwd-pill">{s.workingDirectoryLabel}</span>
+                  {#if item.cwdLabel}
+                    <span class="session-cwd-pill">{item.cwdLabel}</span>
                   {/if}
-                  <span class:attention={s.requiresUserInput}>{statusLabel(s)}</span>
+                  <span class:attention={item.kind === "live" && item.status === "需要操作"}>
+                    {item.kind === "live" ? item.status : item.when}
+                  </span>
                 </span>
               </span>
             </button>
@@ -141,7 +197,7 @@
             <span>更多</span>
             <span class="ob-more-count">{hiddenCount}</span>
           </button>
-        {:else if expanded && sessions.length > VISIBLE}
+        {:else if expanded && allItems.length > VISIBLE}
           <button type="button" class="ob-more" onclick={() => (expanded = false)}>
             <span>收起</span>
           </button>
@@ -152,7 +208,7 @@
         <button class="tint-primary" type="button" onclick={createSession}>
           <span class="codicon codicon-add"></span> 新建会话
         </button>
-        {#if sessions.length > 0}
+        {#if hasItems}
           <button class="tint-neutral" type="button" onclick={resumeSession}>
             <span class="codicon codicon-history"></span> 恢复会话
           </button>

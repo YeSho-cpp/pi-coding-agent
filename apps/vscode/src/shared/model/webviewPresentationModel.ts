@@ -1,4 +1,4 @@
-import type { SessionSummaryView, SessionViewModel } from "./sessionViewModel.js";
+import type { CatalogSessionSummaryView, SessionSummaryView, SessionViewModel } from "./sessionViewModel.js";
 
 export type WebviewSurface =
   | { kind: "sidebar" }
@@ -9,6 +9,8 @@ export interface WebviewPresentationView {
   workspaceName: string;
   workspacePath: string;
   sessions: SessionSummaryView[];
+  /** On-disk Pi sessions for the welcome/history list. */
+  catalogSessions?: CatalogSessionSummaryView[];
   /** The sidebar selection. Panel focus never changes this value. */
   activeSessionId: string | null;
   displayedSession: SessionViewModel | null;
