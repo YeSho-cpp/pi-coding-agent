@@ -17,6 +17,10 @@
 
 它**不替代** Pi，而是启动你已安装的 `pi` CLI，并复用 `~/.pi/agent`（模型、会话、技能、配置）。
 
+<p align="center">
+  <img src="assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
+</p>
+
 ## Fork 说明（务必保留）
 
 本仓库是以下项目的 **fork / 重命名发行版**：

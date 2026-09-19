@@ -14,13 +14,17 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode-vscode"><img src="https://img.shields.io/visual-studio-marketplace/v/yesho.pi-coding-agent?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode"><img src="https://img.shields.io/visual-studio-marketplace/v/yesho.pi-coding-agent-vscode?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="Marketplace"></a>
   <img src="https://img.shields.io/github/license/YeSho-cpp/pi-coding-agent?style=flat-square" alt="License">
 </p>
 
 **Pi Coding Agent UI** is a VS Code extension that drives [Mario Zechner’s](https://github.com/badlogic) open-source [Pi coding agent](https://github.com/earendil-works/pi) from a native sidebar: conversation, tool cards, model picker, thinking levels, session tree, shell shortcuts, editor context chips, and more.
 
 It does **not** replace Pi. It launches your installed `pi` CLI and reuses `~/.pi/agent` (models, sessions, skills, settings).
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
+</p>
 
 ## Fork notice
 
