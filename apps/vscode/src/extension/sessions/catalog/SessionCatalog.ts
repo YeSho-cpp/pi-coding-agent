@@ -50,6 +50,54 @@ export async function discoverPiSessions(
     .filter((entry): entry is PiSessionCatalogEntry => Boolean(entry && findSessionWorkingDirectory(directories, entry.cwd)));
 }
 
+/** Recent sessions across all workspaces under ~/.pi/agent (welcome history). */
+export async function discoverRecentPiSessionsGlobally(
+  limit = 40,
+  homeDirectory: string = homedir(),
+): Promise<PiSessionCatalogEntry[]> {
+  const agentDir = resolvePiAgentDirectory(homeDirectory, undefined, homeDirectory);
+  const sessionsRoot = join(agentDir, "sessions");
+  let projectDirs: string[] = [];
+  try {
+    projectDirs = (await readdir(sessionsRoot, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(sessionsRoot, entry.name));
+  } catch {
+    return [];
+  }
+
+  const candidates: string[] = [];
+  for (const dir of projectDirs.slice(0, 80)) {
+    try {
+      const files = await readdir(dir, { withFileTypes: true });
+      for (const file of files) {
+        if (!file.isFile() || !file.name.endsWith(".jsonl")) continue;
+        candidates.push(join(dir, file.name));
+        if (candidates.length >= limit * 3) break;
+      }
+    } catch {
+      /* ignore */
+    }
+    if (candidates.length >= limit * 3) break;
+  }
+
+  const withMtime = await Promise.all(candidates.map(async (path) => {
+    try {
+      const s = await stat(path);
+      return { path, mtimeMs: s.mtimeMs };
+    } catch {
+      return undefined;
+    }
+  }));
+  const newest = withMtime
+    .filter((item): item is { path: string; mtimeMs: number } => Boolean(item))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .slice(0, limit);
+
+  const entries = await mapConcurrent(newest.map((item) => item.path), 8, readPiSessionMetadata);
+  return entries.filter((entry): entry is PiSessionCatalogEntry => Boolean(entry?.path && entry.cwd));
+}
+
 export function prioritizeSessionRoots(
   directories: readonly SessionWorkingDirectory[],
   rootsByDirectory: readonly (readonly string[])[],
