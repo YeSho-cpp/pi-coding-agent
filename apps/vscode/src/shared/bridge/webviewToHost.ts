@@ -183,6 +183,8 @@ const payloadSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("loadHistory"), sessionId: z.string().min(1).max(128) }),
   z.object({ type: z.literal("searchWorkspaceFiles"), requestId: z.string().min(1).max(128), sessionId: z.string().min(1).max(128), query: z.string().max(1_024), limit: z.number().int().min(1).max(50) }),
   z.object({ type: z.literal("openSettings") }),
+  z.object({ type: z.literal("listWelcomeResources") }),
+  z.object({ type: z.literal("revealPath"), path: z.string().min(1).max(4096) }),
   z.object({
     type: z.literal("saveImage"),
     requestId: z.string().min(1).max(128),

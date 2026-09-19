@@ -19,6 +19,15 @@ export const composerFocusTick = writable(0);
 /** True while the welcome list is opening a session — avoids flashing the welcome UI. */
 export const pendingSessionOpen = writable(false);
 
+export interface WelcomeResourcesView {
+  version: string;
+  skills: string[];
+  extensions: string[];
+  skillsPaths: string[];
+  extensionsPaths: string[];
+}
+export const welcomeResources = writable<WelcomeResourcesView | null>(null);
+
 export interface ToastItem {
   id: number;
   level: "info" | "warning" | "error";

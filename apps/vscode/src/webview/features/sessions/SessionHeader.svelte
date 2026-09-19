@@ -249,10 +249,6 @@
                 <span><strong>Session file</strong><small class="session-file-path">{active.sessionFile}</small></span>
               </button>
             {/if}
-            <button type="button" onclick={() => { closeMenus(); postToHost({ type: "openProxySettings" }); }}>
-              <span class="codicon codicon-globe"></span>
-              <span><strong>Network & proxy</strong><small>{active.networkProxy.restartRequired ? active.isEphemeral ? "Restart unavailable · temporary session is not saved" : `${active.networkProxy.pendingLabel ?? active.networkProxy.label} · restart required` : active.networkProxy.label}</small></span>
-            </button>
             <div class="session-submenu-wrap">
               <button
                 type="button"
@@ -263,7 +259,7 @@
                 onclick={toggleExtensionsMenu}
               >
                 <span class="codicon codicon-extensions"></span>
-                <span><strong>Pi Coding Agent extensions</strong></span>
+                <span><strong>Pi extensions (session)</strong></span>
                 <span
                   class="codicon session-submenu-chevron"
                   class:codicon-chevron-right={!extensionsMenuOpen}
@@ -277,14 +273,14 @@
                     <span class="codicon codicon-list-tree"></span>
                     <span><strong>Session tree adapter</strong><small>{active.sessionTreeAvailable ? "Connected" : "Unavailable"}</small></span>
                   </button>
-                  <button type="button" onclick={() => { closeMenus(); postToHost({ type: "openSettings" }); }}>
+                  <button type="button" disabled>
                     <span class="codicon codicon-question"></span>
                     <span>
                       <strong>Question tool</strong>
                       <small>
                         {active.questionTool.restartRequired
                           ? active.isEphemeral
-                            ? "Restart unavailable · temporary session is not saved"
+                            ? "Restart unavailable · temporary session"
                             : `${active.questionTool.configuredEnabled ? "Enable" : "Disable"} after restart`
                           : active.questionTool.appliedEnabled ? "Enabled for this process" : "Disabled"}
                       </small>
@@ -293,8 +289,6 @@
                 </div>
               {/if}
             </div>
-            <button type="button" onclick={() => { closeMenus(); postToHost({ type: "refreshCommands", sessionId: active.id }); }}><span class="codicon codicon-refresh"></span> Refresh commands</button>
-            <button type="button" onclick={() => { closeMenus(); postToHost({ type: "exportDiagnostics" }); }}><span class="codicon codicon-save"></span> Export diagnostics</button>
             <div class="menu-separator"></div>
             <button class="danger" type="button" onclick={() => closeSession(active.id)}><span class="codicon codicon-close"></span> Close session</button>
           </div>

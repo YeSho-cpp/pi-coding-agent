@@ -2,7 +2,11 @@
   import type { CatalogSessionSummaryView, SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
   import { onMount } from "svelte";
   import { postToHost } from "../../bridge/vscodeBridge";
-  import { pendingSessionOpen } from "../../state/sessionViewStore.svelte";
+  import {
+    pendingSessionOpen,
+    presentationStore,
+    welcomeResources,
+  } from "../../state/sessionViewStore.svelte";
 
   let {
     session = null,
@@ -19,7 +23,50 @@
   const VISIBLE = 5;
   let expanded = $state(false);
   let draft = $state("");
+  /** welcome topbar: info | extensions | skills | settings */
+  let topMenu = $state<"info" | "extensions" | "skills" | "settings" | null>(null);
+  let topRoot = $state<HTMLElement | null>(null);
 
+  const extVersion = $derived($presentationStore.extensionVersion ?? "1.0.x");
+  const resources = $derived($welcomeResources);
+
+  function closeTopMenus(): void {
+    topMenu = null;
+  }
+
+  function toggleTop(menu: "info" | "extensions" | "skills" | "settings"): void {
+    topMenu = topMenu === menu ? null : menu;
+    if (topMenu === "extensions" || topMenu === "skills" || topMenu === "info") {
+      postToHost({ type: "listWelcomeResources" });
+    }
+  }
+
+  onMount(() => {
+    postToHost({ type: "listWelcomeResources" });
+    const onPointerDown = (event: PointerEvent): void => {
+      if (!topMenu) return;
+      const target = event.target as Element | null;
+      if (target?.closest?.(".ob-topbar")) return;
+      topMenu = null;
+    };
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === "Escape" && topMenu) {
+        event.preventDefault();
+        topMenu = null;
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  });
+
+  function openSettings(): void {
+    closeTopMenus();
+    postToHost({ type: "openSettings" });
+  }
   type WelcomeItem =
     | { kind: "live"; id: string; title: string; isActive: boolean; status: string; cwdLabel?: string; ephemeral?: boolean }
     | { kind: "catalog"; path: string; title: string; when: string; cwdLabel?: string; preview?: string };
@@ -192,6 +239,92 @@
 </script>
 
 <div class="onboarding-view" class:no-workspace={noWorkspace} class:has-error={session?.status === "failed"}>
+  <!-- Top chrome: left info/extensions/skills · right settings -->
+  <header class="ob-topbar" bind:this={topRoot}>
+    <div class="ob-topbar-left">
+      <button type="button" class="ob-icon-btn" class:active={topMenu === "info"} aria-label="版本信息" title="版本信息" onclick={() => toggleTop("info")}>
+        <span class="codicon codicon-info"></span>
+      </button>
+      <button type="button" class="ob-icon-btn" class:active={topMenu === "extensions"} aria-label="扩展" title="Pi 扩展" onclick={() => toggleTop("extensions")}>
+        <span class="codicon codicon-package"></span>
+      </button>
+      <button type="button" class="ob-icon-btn" class:active={topMenu === "skills"} aria-label="技能" title="Skills" onclick={() => toggleTop("skills")}>
+        <span class="codicon codicon-book"></span>
+      </button>
+    </div>
+    <div class="ob-topbar-right">
+      <button type="button" class="ob-icon-btn" class:active={topMenu === "settings"} aria-label="设置" title="设置" onclick={() => toggleTop("settings")}>
+        <span class="codicon codicon-settings-gear"></span>
+      </button>
+    </div>
+
+    {#if topMenu === "info"}
+      <div class="ob-top-menu ob-top-menu-left" role="dialog" aria-label="版本信息">
+        <div class="ob-top-menu-title">Pi Coding Agent UI</div>
+        <div class="ob-top-menu-meta">v{extVersion}</div>
+        <div class="ob-top-menu-meta">yesho.pi-coding-agent-vscode</div>
+        <div class="ob-top-menu-hint">基于 FrostPi / Frost UI（AGPL-3.0）· 使用本机 Pi CLI 与 ~/.pi/agent</div>
+        <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "openExternal", url: "https://github.com/YeSho-cpp/pi-coding-agent" }); }}>
+          <span class="codicon codicon-link-external"></span> GitHub 仓库
+        </button>
+      </div>
+    {:else if topMenu === "extensions"}
+      <div class="ob-top-menu ob-top-menu-left" role="dialog" aria-label="扩展">
+        <div class="ob-top-menu-title">扩展 <span class="count">{resources?.extensions?.length ?? 0}</span></div>
+        {#if resources?.extensions?.length}
+          <div class="ob-top-menu-list">
+            {#each resources.extensions as name (name)}
+              <div class="ob-top-menu-row">{name}</div>
+            {/each}
+          </div>
+          {#if resources.extensionsPaths?.length}
+            <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "revealPath", path: resources.extensionsPaths[0] }); }}>
+              <span class="codicon codicon-folder-opened"></span> 打开扩展目录
+            </button>
+          {/if}
+        {:else}
+          <div class="ob-top-menu-hint">未发现 Pi 扩展（~/.pi/agent/extensions 等）</div>
+        {/if}
+      </div>
+    {:else if topMenu === "skills"}
+      <div class="ob-top-menu ob-top-menu-left" role="dialog" aria-label="技能">
+        <div class="ob-top-menu-title">Skills <span class="count">{resources?.skills?.length ?? 0}</span></div>
+        {#if resources?.skills?.length}
+          <div class="ob-top-menu-list">
+            {#each resources.skills as name (name)}
+              <div class="ob-top-menu-row">{name}</div>
+            {/each}
+          </div>
+          {#if resources.skillsPaths?.length}
+            <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "revealPath", path: resources.skillsPaths[0] }); }}>
+              <span class="codicon codicon-folder-opened"></span> 打开 skills 目录
+            </button>
+          {/if}
+        {:else}
+          <div class="ob-top-menu-hint">未发现 skills（~/.pi/agent/skills、~/.agents/skills）</div>
+        {/if}
+      </div>
+    {:else if topMenu === "settings"}
+      <div class="ob-top-menu ob-top-menu-right" role="menu" aria-label="设置">
+        <button type="button" class="ob-top-menu-item" onclick={openSettings}>
+          <span class="codicon codicon-settings-gear"></span> 扩展设置（piAgent.*）
+        </button>
+        <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "configureExecutable" }); }}>
+          <span class="codicon codicon-terminal"></span> 配置 Pi 可执行文件
+        </button>
+        <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "openProxySettings" }); }}>
+          <span class="codicon codicon-globe"></span> 网络与代理
+        </button>
+        <button type="button" class="ob-top-menu-item" onclick={() => { closeTopMenus(); postToHost({ type: "exportDiagnostics" }); }}>
+          <span class="codicon codicon-save"></span> 导出诊断
+        </button>
+        <button type="button" class="ob-top-menu-item" onclick={() => toggleTop("info")}>
+          <span class="codicon codicon-info"></span> 关于 · v{extVersion}
+        </button>
+      </div>
+    {/if}
+  </header>
+
   <!-- 1) Big Pi brand mark -->
   <header class="ob-hero">
     <div class="ob-logo" aria-hidden="true">
@@ -364,9 +497,99 @@
     height: 100%;
     min-height: 0;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 0;
-    padding: 12px 14px 12px;
+    padding: 8px 12px 12px;
+  }
+
+  .ob-topbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 32px;
+    margin-bottom: 2px;
+  }
+  .ob-topbar-left,
+  .ob-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .ob-topbar .ob-icon-btn {
+    width: 28px;
+    height: 28px;
+    border: 0;
+  }
+  .ob-topbar .ob-icon-btn.active {
+    color: var(--frost-text);
+    background: var(--frost-hover);
+    border-color: var(--frost-border-soft);
+  }
+  .ob-top-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    z-index: 40;
+    min-width: 220px;
+    max-width: min(320px, 92vw);
+    padding: 8px;
+    border: 1px solid var(--frost-border);
+    border-radius: 10px;
+    background: var(--frost-surface-raised);
+    box-shadow: var(--frost-shadow);
+  }
+  .ob-top-menu-left { left: 0; }
+  .ob-top-menu-right { right: 0; }
+  .ob-top-menu-title {
+    margin-bottom: 2px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--frost-text);
+  }
+  .ob-top-menu-title .count {
+    color: var(--frost-faint);
+    font-weight: 500;
+    font-size: 11px;
+  }
+  .ob-top-menu-meta {
+    color: var(--frost-muted);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+  }
+  .ob-top-menu-hint {
+    margin: 6px 0 2px;
+    color: var(--frost-faint);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .ob-top-menu-list {
+    max-height: 160px;
+    overflow: auto;
+    margin: 6px 0 4px;
+  }
+  .ob-top-menu-row {
+    padding: 4px 2px;
+    font-size: 11.5px;
+    color: var(--frost-text);
+    border-bottom: 1px solid color-mix(in srgb, var(--frost-border) 50%, transparent);
+  }
+  .ob-top-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--frost-text);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .ob-top-menu-item:hover {
+    background: var(--frost-hover);
   }
 
   .ob-hero {

@@ -249,6 +249,7 @@ export class WebviewConnection implements vscode.Disposable {
       sidebarSessionExternalized: this.surface.kind === "sidebar"
         && Boolean(displayedSession && this.#isExternalized(displayedSession.id)),
       piAvailable: !piError,
+      extensionVersion: this.#registry.extensionVersion,
       ...(piError ? { piError } : {}),
     };
   }

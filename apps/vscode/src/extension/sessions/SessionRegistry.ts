@@ -107,6 +107,18 @@ export class SessionRegistry implements vscode.Disposable {
     return this.#activeSessionId;
   }
 
+  get extensionVersion(): string {
+    try {
+      const ext = vscode.extensions.getExtension("yesho.pi-coding-agent-vscode")
+        ?? vscode.extensions.getExtension("yesho.pi-coding-agent")
+        ?? vscode.extensions.getExtension("yesho.frostui");
+      const version = (ext?.packageJSON as { version?: string } | undefined)?.version;
+      return version || "dev";
+    } catch {
+      return "dev";
+    }
+  }
+
   async ensureInitialSession(): Promise<void> {
     if (!vscode.workspace.workspaceFolders?.length) return;
     await this.#reconcilePersistedWorkingDirectories();

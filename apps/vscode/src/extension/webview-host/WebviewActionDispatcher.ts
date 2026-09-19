@@ -342,8 +342,57 @@ export class WebviewActionDispatcher {
         return;
       }
       case "openSettings":
-        await vscode.commands.executeCommand("workbench.action.openSettings", "@ext:yesho.pi-coding-agent");
+        await vscode.commands.executeCommand("workbench.action.openSettings", "@ext:yesho.pi-coding-agent-vscode");
         return;
+      case "revealPath": {
+        const { Uri } = await import("vscode");
+        const uri = Uri.file(message.path);
+        try {
+          await vscode.commands.executeCommand("revealInExplorer", uri);
+        } catch {
+          vscode.window.showInformationMessage(message.path);
+        }
+        return;
+      }
+      case "listWelcomeResources": {
+        const { readdir } = await import("node:fs/promises");
+        const { homedir } = await import("node:os");
+        const { join } = await import("node:path");
+        const home = homedir();
+        const skillsPaths = [
+          join(home, ".pi", "agent", "skills"),
+          join(home, ".agents", "skills"),
+          ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".agents", "skills")) ?? []),
+        ];
+        const extensionsPaths = [
+          join(home, ".pi", "agent", "extensions"),
+          ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".pi", "extensions")) ?? []),
+        ];
+        const listNames = async (dirs: string[]): Promise<string[]> => {
+          const names = new Set<string>();
+          for (const dir of dirs) {
+            try {
+              const entries = await readdir(dir, { withFileTypes: true });
+              for (const entry of entries) {
+                if (entry.isDirectory() || entry.name.endsWith(".md") || entry.name.endsWith(".js") || entry.name.endsWith(".ts")) {
+                  names.add(entry.isDirectory() ? entry.name : entry.name.replace(/\.(md|js|ts)$/, ""));
+                }
+              }
+            } catch { /* missing dir */ }
+          }
+          return [...names].sort((a, b) => a.localeCompare(b));
+        };
+        const version = this.#registry.extensionVersion;
+        connection.post({
+          type: "welcomeResources",
+          version,
+          skills: await listNames(skillsPaths),
+          extensions: await listNames(extensionsPaths),
+          skillsPaths,
+          extensionsPaths,
+        });
+        return;
+      }
       case "saveImage": {
         const base64 = message.dataUrl.slice(message.dataUrl.indexOf(",") + 1);
         const buffer = Buffer.from(base64, "base64");

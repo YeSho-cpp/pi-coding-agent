@@ -106,6 +106,9 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
     case "toast":
       showToast(message.level, message.message);
       break;
+    case "welcomeResources":
+      welcomeResources.set(message);
+      break;
   }
 }
 

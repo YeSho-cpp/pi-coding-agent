@@ -70,6 +70,14 @@ export type HostToWebviewPayload =
     }
   | { type: "workspaceFileSuggestions"; requestId: string; items: WorkspaceFileCandidateView[]; specials?: EditorMentionSpecialView[]; error?: string }
   | { type: "toast"; level: "info" | "warning" | "error"; message: string }
+  | {
+      type: "welcomeResources";
+      version: string;
+      skills: string[];
+      extensions: string[];
+      skillsPaths: string[];
+      extensionsPaths: string[];
+    }
   | { type: "saveImageResult"; requestId: string; ok: boolean; path?: string; error?: string };
 
 export type HostToWebviewMessage = HostToWebviewPayload & { bridgeVersion: string };

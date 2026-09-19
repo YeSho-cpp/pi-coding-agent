@@ -18,4 +18,6 @@ export interface WebviewPresentationView {
   sidebarSessionExternalized: boolean;
   piAvailable: boolean;
   piError?: string;
+  /** VS Code extension package version (welcome header). */
+  extensionVersion?: string;
 }
