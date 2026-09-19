@@ -965,6 +965,12 @@ export class SessionRegistry implements vscode.Disposable {
     this.#changeEmitter.fire();
   }
 
+  /** Force a welcome/history list refresh (e.g. when the Pi webview becomes visible). */
+  async forceCatalogRefresh(): Promise<void> {
+    this.#catalogRefreshInFlight = false;
+    await this.refreshCatalogSessions();
+  }
+
   #persist(): Thenable<void> {
     const sessions = [...this.#records.values()].filter((record) => !record.ephemeral && !this.#temporarySessionIds.has(record.id));
     const activeRecord = this.#activeSessionId ? this.#records.get(this.#activeSessionId) : undefined;

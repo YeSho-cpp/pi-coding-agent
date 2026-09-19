@@ -55,7 +55,7 @@
     return "就绪";
   }
 
-  const allItems = $derived<WelcomeItem[]>(() => {
+  const allItems = $derived.by<WelcomeItem[]>(() => {
     const live: WelcomeItem[] = sessions.map((s) => ({
       kind: "live",
       id: s.id,
@@ -65,13 +65,8 @@
       ...(s.workingDirectoryLabel ? { cwdLabel: s.workingDirectoryLabel } : {}),
       ephemeral: s.isEphemeral,
     }));
-    const openFiles = new Set(
-      sessions
-        .map((s) => s.cwd)
-        .filter(Boolean),
-    );
-    const catalog: WelcomeItem[] = catalogSessions
-      .filter((c) => c.path)
+    const catalog: WelcomeItem[] = (catalogSessions ?? [])
+      .filter((c) => c?.path)
       .map((c) => ({
         kind: "catalog",
         path: c.path,
@@ -83,9 +78,12 @@
     return [...live, ...catalog];
   });
 
-  const visibleItems = $derived(expanded ? allItems : allItems.slice(0, VISIBLE));
-  const hiddenCount = $derived(Math.max(0, allItems.length - VISIBLE));
-  const hasItems = $derived(allItems.length > 0);
+  const visibleItems = $derived.by(() => {
+    const list = allItems ?? [];
+    return expanded ? list : list.slice(0, VISIBLE);
+  });
+  const hiddenCount = $derived(Math.max(0, (allItems?.length ?? 0) - VISIBLE));
+  const hasItems = $derived((allItems?.length ?? 0) > 0);
 
   function openItem(item: WelcomeItem): void {
     if (item.kind === "live") {
@@ -168,7 +166,7 @@
       {:else}
         <div class="ob-sessions-head">
           <span class="ob-sessions-title">会话</span>
-          <span class="ob-sessions-count">{allItems.length}</span>
+          <span class="ob-sessions-count">{allItems?.length ?? 0}</span>
         </div>
         <div class="ob-sessions-list">
           {#each visibleItems as item (item.kind === "live" ? item.id : item.path)}
@@ -203,7 +201,7 @@
             <span>更多</span>
             <span class="ob-more-count">{hiddenCount}</span>
           </button>
-        {:else if expanded && allItems.length > VISIBLE}
+        {:else if expanded && (allItems?.length ?? 0) > VISIBLE}
           <button type="button" class="ob-more" onclick={() => (expanded = false)}>
             <span>收起</span>
           </button>

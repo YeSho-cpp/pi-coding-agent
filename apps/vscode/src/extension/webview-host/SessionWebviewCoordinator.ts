@@ -57,7 +57,11 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       (endpoint) => this.#createConnection(endpoint),
     );
     this.#disposables.push(
-      registry.onDidChange(() => this.#registryChanged()),
+      registry.onDidChange(() => {
+        this.#registryChanged();
+        // Welcome list: re-scan on-disk Pi sessions when registry changes.
+        void (this.#registry as unknown as { forceCatalogRefresh?: () => Promise<void> }).forceCatalogRefresh?.();
+      }),
       registry.onDidToast((toast) => this.#sidebar?.post({ type: "toast", ...toast })),
       registry.onDidSetComposerText(({ sessionId, text }) => this.#routeComposerText(sessionId, text)),
       this.#drafts.onDidChange(({ sessionId, draft }) => this.#draftChanged(sessionId, draft)),
@@ -213,6 +217,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
     for (const [sessionId, text] of this.#pendingSidebarComposerText) {
       this.#queueSidebarComposerText(sessionId, text);
     }
+    void (this.#registry as unknown as { forceCatalogRefresh?: () => Promise<void> }).forceCatalogRefresh?.();
   }
 
   detachSidebar(): void {
