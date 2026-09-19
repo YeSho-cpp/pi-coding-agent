@@ -20,6 +20,9 @@
 <p align="center">
   <img src="assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
 </p>
+<p align="center">
+<img src="assets/screenshots/welcome-session-list.png" alt="Pi welcome session list" width="720">
+</p>
 
 ## Fork 说明（务必保留）
 

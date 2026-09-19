@@ -25,6 +25,9 @@ It does **not** replace Pi. It launches your installed `pi` CLI and reuses `~/.p
 <p align="center">
   <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
 </p>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/welcome-session-list.png" alt="Pi welcome session list" width="720">
+</p>
 
 ## Fork notice
 
