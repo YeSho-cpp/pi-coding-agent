@@ -14,11 +14,11 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent"><img src="https://img.shields.io/visual-studio-marketplace/v/yesho.pi-coding-agent?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="Marketplace"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode"><img src="https://img.shields.io/visual-studio-marketplace/v/yesho.pi-coding-agent?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="Marketplace"></a>
   <img src="https://img.shields.io/github/license/YeSho-cpp/pi-coding-agent?style=flat-square" alt="License">
 </p>
 
-**Pi Coding Agent** is a VS Code extension that drives [Mario Zechner’s](https://github.com/badlogic) open-source [Pi coding agent](https://github.com/earendil-works/pi) from a native sidebar: conversation, tool cards, model picker, thinking levels, session tree, shell shortcuts, editor context chips, and more.
+**Pi Coding Agent UI** is a VS Code extension that drives [Mario Zechner’s](https://github.com/badlogic) open-source [Pi coding agent](https://github.com/earendil-works/pi) from a native sidebar: conversation, tool cards, model picker, thinking levels, session tree, shell shortcuts, editor context chips, and more.
 
 It does **not** replace Pi. It launches your installed `pi` CLI and reuses `~/.pi/agent` (models, sessions, skills, settings).
 
@@ -32,8 +32,8 @@ This repository is a **fork and rebrand** of:
 | [OpenChamber](https://github.com) (design/code reference) | UI polish reference | see upstream |
 | [tintinweb/vscode-pi-model-chat-provider](https://github.com/tintinweb/vscode-pi-model-chat-provider) | Pi brand mark reference | MIT |
 
-- Marketplace / sidebar product name: **Pi Coding Agent** (sidebar label: **Pi**)
-- Extension ID: `yesho.pi-coding-agent`
+- Marketplace / sidebar product name: **Pi Coding Agent UI** (sidebar label: **Pi**)
+- Extension ID: `yesho.pi-coding-agent-vscode`
 - Settings prefix: `piAgent.*`
 - Commands: `Pi Coding Agent: …` / `piAgent.*`
 
@@ -58,7 +58,7 @@ The historical Frost UI README is kept as [`README.frost-ui.md`](README.frost-ui
 
 ### From Marketplace (after publish)
 
-1. Install **Pi Coding Agent** (`yesho.pi-coding-agent`)
+1. Install **Pi Coding Agent UI** (`yesho.pi-coding-agent-vscode`)
 2. Open the **Pi** icon in the Activity Bar
 3. Start or resume a session
 

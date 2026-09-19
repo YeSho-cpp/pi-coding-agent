@@ -19,7 +19,7 @@ const version = projectVersion();
 const extensionDir = resolve(root, "apps/vscode");
 const extensionChangelog = resolve(extensionDir, "CHANGELOG.md");
 
-console.log(`Publishing yesho.pi-coding-agent@${version} to VS Code Marketplace…`);
+console.log(`Publishing yesho.pi-coding-agent-vscode@${version} to VS Code Marketplace…`);
 
 run("node", ["scripts/build.mjs"]);
 copyFileSync(resolve(root, "CHANGELOG.md"), extensionChangelog);
@@ -39,5 +39,5 @@ if (process.env.VSCE_PAT) {
 }
 run("pnpm", publishArgs, { cwd: extensionDir });
 
-console.log(`Published yesho.pi-coding-agent@${version}`);
+console.log(`Published yesho.pi-coding-agent-vscode@${version}`);
 console.log(`Local artifact: ${localVsix}`);

@@ -43,7 +43,7 @@ if (!webviewCss.includes("./assets/codicon.ttf")) {
   throw new Error("Webview CSS does not reference the packaged Codicon font with a relative URL.");
 }
 const manifest = JSON.parse(zip.readAsText("extension/package.json"));
-if (manifest.publisher !== "yesho" || manifest.name !== "pi-coding-agent") {
+if (manifest.publisher !== "yesho" || manifest.name !== "pi-coding-agent-vscode") {
   throw new Error(`Unexpected extension identity: ${manifest.publisher}.${manifest.name}`);
 }
 const size = statSync(path).size;

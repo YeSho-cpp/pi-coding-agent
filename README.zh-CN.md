@@ -13,7 +13,7 @@
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-**Pi Coding Agent** 是驱动 [Mario Zechner](https://github.com/badlogic) 开源项目 [Pi coding agent](https://github.com/earendil-works/pi) 的 VS Code 扩展：侧边栏对话、工具卡片、模型选择、思考档位、会话树、Shell 快捷方式、编辑器上下文 chip 等。
+**Pi Coding Agent UI** 是驱动 [Mario Zechner](https://github.com/badlogic) 开源项目 [Pi coding agent](https://github.com/earendil-works/pi) 的 VS Code 扩展：侧边栏对话、工具卡片、模型选择、思考档位、会话树、Shell 快捷方式、编辑器上下文 chip 等。
 
 它**不替代** Pi，而是启动你已安装的 `pi` CLI，并复用 `~/.pi/agent`（模型、会话、技能、配置）。
 
@@ -27,9 +27,9 @@
 | OpenChamber | 交互与视觉参考 | 见上游 |
 | [tintinweb/vscode-pi-model-chat-provider](https://github.com/tintinweb/vscode-pi-model-chat-provider) | Pi 品牌标识参考 | MIT |
 
-- 产品名（市场）：**Pi Coding Agent**
+- 产品名（市场）：**Pi Coding Agent UI**
 - 侧边栏名称：**Pi**
-- 扩展 ID：`yesho.pi-coding-agent`
+- 扩展 ID：`yesho.pi-coding-agent-vscode`
 - 配置前缀：`piAgent.*`
 - 命令：`Pi Coding Agent: …`
 
@@ -52,7 +52,7 @@ FrostPi 为 **AGPL-3.0**，因此本发行版同样以 **AGPL-3.0** 发布，衍
 
 ### 市场（发布后）
 
-安装扩展 **Pi Coding Agent**（`yesho.pi-coding-agent`），打开活动栏 **Pi** 图标。
+安装扩展 **Pi Coding Agent UI**（`yesho.pi-coding-agent-vscode`），打开活动栏 **Pi** 图标。
 
 ### 本地 VSIX
 

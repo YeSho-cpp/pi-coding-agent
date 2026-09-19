@@ -1,6 +1,6 @@
 {
-  "name": "pi-coding-agent",
-  "displayName": "Pi Coding Agent",
+  "name": "pi-coding-agent-vscode",
+  "displayName": "Pi Coding Agent UI",
   "description": "Visual VS Code UI for Pi Coding Agent. Uses your existing Pi CLI config, models, and sessions. Fork of FrostPi / Frost UI (AGPL-3.0).",
   "version": "1.0.2",
   "publisher": "yesho",
