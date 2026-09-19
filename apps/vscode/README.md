@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="apps/vscode/assets/icon.png" alt="Pi Coding Agent" width="128">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/apps/vscode/assets/icon.png" alt="Pi Coding Agent UI" width="128">
 </p>
 
-<h1 align="center">Pi Coding Agent</h1>
+<h1 align="center">Pi Coding Agent UI</h1>
 
 <p align="center">
-  <strong>Visual VS Code UI for <a href="https://pi.dev">Pi</a> — your CLI, config, models, and sessions.</strong>
+  <strong>A <b>Visual Studio Code extension</b> for <a href="https://github.com/earendil-works/pi">Pi Coding Agent</a></strong><br>
+  Native sidebar, editor-context attach, worktree sessions — built around VS Code, not a standalone chat app.
 </p>
 
 <p align="center">
@@ -15,69 +16,90 @@
 
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode"><img src="https://img.shields.io/visual-studio-marketplace/v/yesho.pi-coding-agent-vscode?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="Marketplace"></a>
+  <img src="https://img.shields.io/badge/VS%20Code-1.99%2B-007ACC?style=flat-square&logo=visualstudiocode&logoColor=white" alt="VS Code">
   <img src="https://img.shields.io/github/license/YeSho-cpp/pi-coding-agent?style=flat-square" alt="License">
 </p>
 
-**Pi Coding Agent UI** is a VS Code extension that drives [Mario Zechner’s](https://github.com/badlogic) open-source [Pi coding agent](https://github.com/earendil-works/pi) from a native sidebar: conversation, tool cards, model picker, thinking levels, session tree, shell shortcuts, editor context chips, and more.
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode"><b>Install from VS Code Marketplace</b></a>
+</p>
 
-It does **not** replace Pi. It launches your installed `pi` CLI and reuses `~/.pi/agent` (models, sessions, skills, settings).
+**Pi Coding Agent UI** is first and foremost a **VS Code extension** (`yesho.pi-coding-agent-vscode`). It puts [Pi](https://github.com/earendil-works/pi) into the IDE you already use: Activity Bar sidebar, editor-driven context, workspace-aware sessions, and VS Code-native settings/commands.
+
+It does **not** replace the Pi CLI. The extension launches your installed `pi` and reuses `~/.pi/agent` (models, sessions, skills, settings).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
 </p>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/welcome-session-list.png" alt="Pi welcome session list" width="720">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/welcome-session-list.png" alt="Pi welcome session list in VS Code" width="720">
 </p>
+
+## VS Code adaptation (why this is an editor extension)
+
+| VS Code surface | What you get |
+|---|---|
+| **Activity Bar** | Dedicated **Pi** view container + sidebar webview (`piAgent.chat`) |
+| **Editor** | Open file / selection as context chips; `×` or **Esc** in the editor to detach |
+| **Workspace** | Sessions scoped to the opened folder & git worktrees (same `~/.pi/agent` store as terminal `pi`) |
+| **Quick Pick** | `+` attach uses VS Code Quick Pick; **Material Icon Theme** icons when that extension is installed |
+| **Commands & keys** | Command Palette: `Pi Coding Agent: …`; Esc to dismiss chips/menus |
+| **Settings UI** | All knobs under **`piAgent.*`** in VS Code Settings |
+| **Trusted workspaces** | Extension only activates in trusted folders (Pi gets shell/files access) |
+| **Theme** | UI follows your VS Code color theme (not a fixed web chat skin) |
+| **Panels** | Optional editor-tab session panel; diagnostics export via host |
+| **Shell** | Composer `!` / `!!` run through the extension host’s terminal integration |
+
+### In-product surfaces
+
+- Welcome home: large Pi mark, **current-folder session list**, `…` rename/delete, top bar (version / extensions / skills / settings)
+- Session UI: model picker, thinking level, tool cards, markdown/Mermaid, context ring, permission bar
+- Optional: LM provider path for Copilot Chat consumers (`piAgent.*` persist settings)
 
 ## Fork notice
 
-This repository is a **fork and rebrand** of:
+This repository is a **fork and rebrand** focused on **VS Code**:
 
 | Project | Role | License |
 |---|---|---|
-| [frostime/pi-vscode-ui](https://github.com/frostime/pi-vscode-ui) (**FrostPi / Frost UI**) | Primary upstream VS Code UI for Pi | AGPL-3.0 |
-| [OpenChamber](https://github.com) (design/code reference) | UI polish reference | see upstream |
-| [tintinweb/vscode-pi-model-chat-provider](https://github.com/tintinweb/vscode-pi-model-chat-provider) | Pi brand mark reference | MIT |
+| [frostime/pi-vscode-ui](https://github.com/frostime/pi-vscode-ui) (**FrostPi / Frost UI**) | Primary upstream **VS Code** UI for Pi | AGPL-3.0 |
+| OpenChamber | Editor UI polish reference | see upstream |
+| [tintinweb/vscode-pi-model-chat-provider](https://github.com/tintinweb/vscode-pi-model-chat-provider) | Pi brand mark reference (also a VS Code extension) | MIT |
 
-- Marketplace / sidebar product name: **Pi Coding Agent UI** (sidebar label: **Pi**)
+- Marketplace name: **Pi Coding Agent UI** — sidebar label: **Pi**
 - Extension ID: `yesho.pi-coding-agent-vscode`
-- Settings prefix: `piAgent.*`
-- Commands: `Pi Coding Agent: …` / `piAgent.*`
+- Settings: `piAgent.*` · Commands: `piAgent.*`
 
-Because FrostPi is **AGPL-3.0**, this fork remains **AGPL-3.0**. Derivative releases must keep source available and preserve attribution. See [`LICENSE`](LICENSE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+AGPL-3.0 applies to this distribution. See [`LICENSE`](LICENSE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Legacy notes: [`README.frost-ui.md`](README.frost-ui.md).
 
-The historical Frost UI README is kept as [`README.frost-ui.md`](README.frost-ui.md) for reference.
+## Prerequisites (VS Code)
 
-## Prerequisites
-
-1. **Pi CLI** on `PATH` (or set `piAgent.pi.executable`):
+1. **VS Code 1.99+**, trusted workspace  
+2. **Pi CLI** on `PATH` (or `piAgent.pi.executable`):
 
    ```bash
    npm install -g @earendil-works/pi-coding-agent
    pi --version
    ```
 
-2. Models / providers configured with Pi (`/login` inside Pi, or your existing `~/.pi` setup).
+3. Models configured with Pi (`~/.pi` as in the terminal)
 
-3. VS Code **1.99+**, trusted workspace.
+## Install as a VS Code extension
 
-## Install
+### Marketplace
 
-### From Marketplace (after publish)
+1. Open **[Pi Coding Agent UI](https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode)** in the Marketplace (or search inside VS Code: Extensions)  
+2. **Install**  
+3. Click **Pi** in the **Activity Bar**  
 
-1. Install **Pi Coding Agent UI** (`yesho.pi-coding-agent-vscode`)
-2. Open the **Pi** icon in the Activity Bar
-3. Start or resume a session
-
-### From VSIX (local)
+### VSIX (sideload)
 
 ```bash
-code --install-extension "artifacts/Pi Coding Agent-1.0.0.vsix"
+code --install-extension "artifacts/Pi Coding Agent-<version>.vsix"
+# then: Developer: Reload Window
 ```
 
-Reload the window after install.
-
-### Build from source
+### From source
 
 ```bash
 pnpm install
@@ -85,19 +107,9 @@ pnpm package:vsix
 code --install-extension "artifacts/Pi Coding Agent-<version>.vsix"
 ```
 
-## Highlights
+## VS Code settings (`piAgent.*`)
 
-- Sidebar chat for Pi (steer / follow-up, permission modes)
-- Model + thinking-level pickers (LobeHub-style vendor icons)
-- Session list, resume, tree branch / switch, auto-rename
-- Composer: `@` path attach, `+` QuickPick (Material Icon Theme icons when installed), `!` / `!!` shell
-- Editor context chip: active (`×`) vs inactive ghost; Esc to detach; Clear wipes all chips
-- Markdown, Mermaid, tool cards, diffs, images, save-as-image
-- Copilot Chat LM provider optional (`piAgent.persistSessions`)
-
-## Settings
-
-All settings live under **`piAgent.*`** (was `frostui.*` in pre-1.0 Frost UI builds). Open Settings and search `Pi Coding Agent` or `piAgent`.
+Search **Pi Coding Agent** in VS Code Settings.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -106,37 +118,24 @@ All settings live under **`piAgent.*`** (was `frostui.*` in pre-1.0 Frost UI bui
 | `piAgent.agent.permissionMode` | `ask` | `ask` / `autoConfirm` / `restricted` |
 | `piAgent.composer.streamingBehavior` | `followUp` | `steer` or `followUp` |
 
-## Marketplace publish (maintainers)
+## Maintain / publish
 
 ```bash
-# 1) Azure DevOps PAT with Marketplace (Publish) scope
-# 2) Publisher must exist: yesho
-export VSCE_PAT=<your-pat>
-pnpm publish:marketplace
-```
-
-Or package only:
-
-```bash
-pnpm package:vsix
+# Publisher: yesho · Extension id: yesho.pi-coding-agent-vscode
+export VSCE_PAT=<Azure DevOps PAT with Marketplace Manage>
+pnpm publish:marketplace   # or upload VSIX in Marketplace manage UI
 ```
 
 ## GitHub
 
-Source: [https://github.com/YeSho-cpp/pi-coding-agent](https://github.com/YeSho-cpp/pi-coding-agent)
-
-```bash
-git remote add origin https://github.com/YeSho-cpp/pi-coding-agent.git
-git push -u origin master
-```
+[https://github.com/YeSho-cpp/pi-coding-agent](https://github.com/YeSho-cpp/pi-coding-agent)
 
 ## License
 
-AGPL-3.0 — see [LICENSE](LICENSE). Upstream FrostPi remains AGPL-3.0; this distribution must stay AGPL-3.0-compatible and credit upstream.
+AGPL-3.0 — keep source available and credit upstream FrostPi / Frost UI.
 
 ## Credits
 
-- [Pi coding agent](https://github.com/earendil-works/pi) — Mario Zechner / earendil-works
-- [FrostPi / Frost UI](https://github.com/frostime/pi-vscode-ui) — primary upstream VS Code UI
-- OpenChamber — interaction / visual reference
-- [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — optional QuickPick icons when installed
+- [Pi](https://github.com/earendil-works/pi) — Mario Zechner / earendil-works  
+- [FrostPi / Frost UI](https://github.com/frostime/pi-vscode-ui) — upstream VS Code UI  
+- [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — optional Quick Pick icons  
