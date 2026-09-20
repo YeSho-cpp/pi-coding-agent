@@ -355,6 +355,9 @@ export class WebviewActionDispatcher {
         return;
       }
       case "listWelcomeResources": {
+        this.#registry.refreshWelcomeLists();
+        // Force a fresh scan for the open welcome menu (user-triggered, not looped).
+        this.#catalogForce();
         await this.#registry.refreshWelcomeResources();
         const { readdir, stat, readFile } = await import("node:fs/promises");
         const os = await import("node:os");
@@ -386,7 +389,6 @@ export class WebviewActionDispatcher {
             message: `未扫描到 skills · HOME=${home || "?"} · 例如 ${skillsPaths[0]}`,
           });
         }
-        // silence unused imports when tree-shaken oddly
         void readdir; void stat; void readFile;
         return;
       }

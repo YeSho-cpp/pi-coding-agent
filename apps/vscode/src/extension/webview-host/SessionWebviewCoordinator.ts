@@ -57,11 +57,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       (endpoint) => this.#createConnection(endpoint),
     );
     this.#disposables.push(
-      registry.onDidChange(() => {
-        this.#registryChanged();
-        // Welcome list: re-scan on-disk Pi sessions when registry changes.
-        void (this.#registry as unknown as { forceCatalogRefresh?: () => Promise<void> }).forceCatalogRefresh?.();
-      }),
+      registry.onDidChange(() => this.#registryChanged()),
       registry.onDidToast((toast) => this.#sidebar?.post({ type: "toast", ...toast })),
       registry.onDidSetComposerText(({ sessionId, text }) => this.#routeComposerText(sessionId, text)),
       this.#drafts.onDidChange(({ sessionId, draft }) => this.#draftChanged(sessionId, draft)),
@@ -80,10 +76,10 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       this.#panels,
     );
 
-    // Active editor file/selection → composer chip (active default; Esc/× → inactive ghost).
+    // Active editor file/selection → composer chip (debounced — selection fires very often).
     this.#disposables.push(
-      vscode.window.onDidChangeTextEditorSelection(() => this.#publishEditorContextHint()),
-      vscode.window.onDidChangeActiveTextEditor(() => this.#publishEditorContextHint()),
+      vscode.window.onDidChangeTextEditorSelection(() => this.#scheduleEditorContextHint()),
+      vscode.window.onDidChangeActiveTextEditor(() => this.#scheduleEditorContextHint(0)),
       vscode.commands.registerCommand("piAgent.attachEditorSelection", async () => {
         const items = await captureContextItemsForHint("selection");
         if (!items.length) {
@@ -114,6 +110,15 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
 
   #editorChipAttached = true;
   #lastEditorChipKey = "";
+  #editorHintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  #scheduleEditorContextHint(delayMs = 200): void {
+    if (this.#editorHintTimer) clearTimeout(this.#editorHintTimer);
+    this.#editorHintTimer = setTimeout(() => {
+      this.#editorHintTimer = null;
+      this.#publishEditorContextHint();
+    }, delayMs);
+  }
 
   #setEditorChipAttached(attached: boolean): void {
     const hint = this.#lastEditorChipHint;
@@ -217,8 +222,8 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
     for (const [sessionId, text] of this.#pendingSidebarComposerText) {
       this.#queueSidebarComposerText(sessionId, text);
     }
-    void (this.#registry as unknown as { forceCatalogRefresh?: () => Promise<void> }).forceCatalogRefresh?.();
-    void (this.#registry as unknown as { refreshWelcomeResources?: () => Promise<void> }).refreshWelcomeResources?.();
+    // One-shot welcome scans (throttled inside registry). Never on every registry event.
+    void (this.#registry as unknown as { refreshWelcomeLists?: () => void }).refreshWelcomeLists?.();
   }
 
   detachSidebar(): void {
@@ -279,6 +284,10 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
   }
 
   dispose(): void {
+    if (this.#editorHintTimer) {
+      clearTimeout(this.#editorHintTimer);
+      this.#editorHintTimer = null;
+    }
     this.#contextAttachStatus?.dispose();
     this.#contextAttachStatus = undefined;
     void vscode.commands.executeCommand("setContext", "piAgent.editorChipActive", false);

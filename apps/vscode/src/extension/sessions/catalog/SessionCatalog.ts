@@ -205,16 +205,27 @@ export async function resolveSessionRoots(cwd: string, piArguments: string[]): P
   if (cli) roots.push(resolveSessionDir(cli, cwd));
   if (process.env.PI_CODING_AGENT_SESSION_DIR) roots.push(resolveSessionDir(process.env.PI_CODING_AGENT_SESSION_DIR, cwd));
 
-  // Catalog discovery includes both configured scopes even when one is not currently effective,
-  // so sessions remain discoverable after trust or launch-argument changes.
-  const settings = await loadPiSettings(cwd, { piArguments });
-  const projectDir = sessionDirSetting(settings.project);
-  const globalDir = sessionDirSetting(settings.global);
-  if (projectDir) roots.push(resolveSessionDir(projectDir, cwd));
-  if (globalDir) roots.push(resolveSessionDir(globalDir, cwd));
-  roots.push(join(resolvePiAgentDirectory(cwd), "sessions"));
+  // Prefer workspace-scoped dirs only. Do not scan the entire agent sessions
+  // root (that walks every project on the machine and spikes CPU/fans).
+  roots.push(...workspacePiSessionRoots(cwd));
 
   return [...new Set(roots.map((root) => normalize(resolve(root))))];
+}
+
+/** Root folder that holds all Pi session JSONL files for this install. */
+export function resolvePiAgentSessionsRoot(cwd: string): string {
+  return normalize(resolve(join(resolvePiAgentDirectory(cwd), "sessions")));
+}
+
+/**
+ * Session directories that belong to this workspace folder only.
+ * Pi encodes `/Users/x/Code/foo` as `--Users-x-Code-foo--`.
+ */
+export function workspacePiSessionRoots(cwd: string): string[] {
+  const sessionsRoot = resolvePiAgentSessionsRoot(cwd);
+  const normalized = normalize(resolve(cwd)).replace(/\\/g, "/");
+  const encoded = `--${normalized.replace(/^\//, "").replaceAll("/", "-")}--`;
+  return [normalize(resolve(join(sessionsRoot, encoded)))];
 }
 
 async function findJsonlFiles(roots: string[], limit: number): Promise<string[]> {

@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import { appendFile, access, unlink } from "node:fs/promises";
 import { basename, normalize, resolve } from "node:path";
 
+/** Min ms between background welcome/catalog scans (CPU guard). */
+const WELCOME_SCAN_INTERVAL_MS = 30_000;
+
 import type { RpcExtensionUiResponse, StreamingBehavior, ThinkingLevel } from "@frostime/pi-rpc";
 import * as vscode from "vscode";
 
@@ -13,7 +16,7 @@ import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
-import { discoverPiSessions, discoverRecentPiSessionsGlobally, readPiSessionMetadata, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
+import { discoverPiSessions, readPiSessionMetadata, resolvePiAgentSessionsRoot, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { SessionPersistence } from "./SessionPersistence.js";
@@ -123,9 +126,8 @@ export class SessionRegistry implements vscode.Disposable {
     if (!vscode.workspace.workspaceFolders?.length) return;
     await this.#reconcilePersistedWorkingDirectories();
     await this.#repairGeneratedTitles();
-    // Load on-disk Pi sessions for the welcome list (non-blocking).
-    void this.refreshCatalogSessions();
-    void this.refreshWelcomeResources();
+    // Throttled one-shot welcome scans; do not emit on every registry event.
+    this.refreshWelcomeLists();
     // Never invent a new session on open. Empty workspaces stay on the onboarding home until
     // the user creates or resumes a session. Optionally start only an already-selected one.
     const active = this.#activeSessionId ? this.#runtimes.get(this.#activeSessionId) : undefined;
@@ -188,6 +190,7 @@ export class SessionRegistry implements vscode.Disposable {
   #catalogRefreshInFlight = false;
   #welcomeSkills: string[] = [];
   #welcomeExtensions: string[] = [];
+  #welcomeScanLastMs = 0;
 
   get welcomeSkills(): string[] {
     return this.#welcomeSkills;
@@ -197,59 +200,83 @@ export class SessionRegistry implements vscode.Disposable {
     return this.#welcomeExtensions;
   }
 
+  /** Throttled scan for sidebar attach — no unbounded emit loop. */
+  refreshWelcomeLists(): void {
+    const now = Date.now();
+    if (now - this.#welcomeScanLastMs < WELCOME_SCAN_INTERVAL_MS) return;
+    this.#welcomeScanLastMs = now;
+    void this.refreshCatalogSessions();
+    void this.#scanWelcomeResourcesQuiet();
+  }
+
+  async #scanWelcomeResourcesQuiet(): Promise<void> {
+    const prevSkills = this.#welcomeSkills.join("\n");
+    const prevExt = this.#welcomeExtensions.join("\n");
+    await this.refreshWelcomeResources();
+    if (
+      this.#welcomeSkills.join("\n") !== prevSkills
+      || this.#welcomeExtensions.join("\n") !== prevExt
+    ) {
+      this.#emitChange();
+    }
+  }
+
   /** Scan Pi skills/extensions dirs for the welcome top bar; cache into snapshot. */
   async refreshWelcomeResources(): Promise<void> {
-    const { readdir, stat, readFile } = await import("node:fs/promises");
-    const { homedir } = await import("node:os");
-    const { join } = await import("node:path");
-    const home = homedir() || process.env.HOME || process.env.USERPROFILE || "";
-    const skillsPaths = [
-      join(home, ".pi", "agent", "skills"),
-      join(home, ".agents", "skills"),
-      ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".agents", "skills")) ?? []),
-    ];
-    const extensionsPaths = [
-      join(home, ".pi", "agent", "extensions"),
-      ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".pi", "extensions")) ?? []),
-    ];
-    const listDirNames = async (dirs: readonly string[]): Promise<string[]> => {
-      const names = new Set<string>();
-      for (const dir of dirs) {
-        if (!dir) continue;
-        let entries: Awaited<ReturnType<typeof readdir>>;
-        try {
-          entries = await readdir(dir, { withFileTypes: true });
-        } catch {
-          continue;
-        }
-        for (const entry of entries) {
-          if (entry.name.startsWith(".")) continue;
-          const full = join(dir, entry.name);
-          let isDir = entry.isDirectory();
-          if (!isDir) {
-            try {
-              isDir = (await stat(full)).isDirectory();
-            } catch {
-              isDir = false;
-            }
-          }
-          if (isDir) names.add(entry.name);
-        }
-      }
-      return [...names];
-    };
-    const skills = await listDirNames(skillsPaths);
     try {
-      const lockRaw = await readFile(join(home, ".agents", ".skill-lock.json"), "utf8");
-      const lock = JSON.parse(lockRaw) as { skills?: Record<string, unknown> };
-      for (const name of Object.keys(lock.skills ?? {})) {
-        if (name && !name.startsWith(".")) skills.push(name);
-      }
-    } catch { /* optional */ }
-    const extensions = await listDirNames(extensionsPaths);
-    this.#welcomeSkills = [...new Set(skills)].sort((a, b) => a.localeCompare(b));
-    this.#welcomeExtensions = [...new Set(extensions)].sort((a, b) => a.localeCompare(b));
-    this.#emitChange();
+      const { readdir, stat, readFile } = await import("node:fs/promises");
+      const { homedir } = await import("node:os");
+      const { join } = await import("node:path");
+      const home = homedir() || process.env.HOME || process.env.USERPROFILE || "";
+      const skillsPaths = [
+        join(home, ".pi", "agent", "skills"),
+        join(home, ".agents", "skills"),
+        ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".agents", "skills")) ?? []),
+      ];
+      const extensionsPaths = [
+        join(home, ".pi", "agent", "extensions"),
+        ...(vscode.workspace.workspaceFolders?.map((f) => join(f.uri.fsPath, ".pi", "extensions")) ?? []),
+      ];
+      const listDirNames = async (dirs: readonly string[]): Promise<string[]> => {
+        const names = new Set<string>();
+        for (const dir of dirs) {
+          if (!dir) continue;
+          let entries: Awaited<ReturnType<typeof readdir>>;
+          try {
+            entries = await readdir(dir, { withFileTypes: true });
+          } catch {
+            continue;
+          }
+          for (const entry of entries) {
+            if (entry.name.startsWith(".")) continue;
+            const full = join(dir, entry.name);
+            let isDir = entry.isDirectory();
+            if (!isDir) {
+              try {
+                isDir = (await stat(full)).isDirectory();
+              } catch {
+                isDir = false;
+              }
+            }
+            if (isDir) names.add(entry.name);
+          }
+        }
+        return [...names];
+      };
+      const skills = await listDirNames(skillsPaths);
+      try {
+        const lockRaw = await readFile(join(home, ".agents", ".skill-lock.json"), "utf8");
+        const lock = JSON.parse(lockRaw) as { skills?: Record<string, unknown> };
+        for (const name of Object.keys(lock.skills ?? {})) {
+          if (name && !name.startsWith(".")) skills.push(name);
+        }
+      } catch { /* optional */ }
+      const extensions = await listDirNames(extensionsPaths);
+      this.#welcomeSkills = [...new Set(skills)].sort((a, b) => a.localeCompare(b));
+      this.#welcomeExtensions = [...new Set(extensions)].sort((a, b) => a.localeCompare(b));
+    } catch {
+      /* keep previous cache */
+    }
   }
 
   /** Discover on-disk Pi sessions for the **current workspace folder only**. */
@@ -257,6 +284,9 @@ export class SessionRegistry implements vscode.Disposable {
     if (this.#catalogRefreshInFlight) return;
     this.#catalogRefreshInFlight = true;
     try {
+      const prevKey = this.#catalogSessions
+        .map((s) => `${s.path}|${s.title}|${s.updatedAt}`)
+        .join("\n");
       const cwd = activeWorkspaceFolder()?.uri.fsPath;
       if (!cwd) {
         if (this.#catalogSessions.length) {
@@ -292,26 +322,48 @@ export class SessionRegistry implements vscode.Disposable {
         }
       };
 
-      // Primary: Pi catalog scoped to this workspace + its git worktrees.
+      // Workspace-scoped roots only — never ripgrep the whole ~/.pi/agent/sessions tree.
       try {
         const discovery = await this.#discoverWorkingDirectories(cwd);
         const configuration = readConfiguration(workspaceUriForPath(cwd));
-        const workspaceEntries = await discoverPiSessions(discovery.directories, configuration.piArguments);
+        const sessionRoots = workspacePiSessionRoots(cwd);
+        const workspaceEntries = await discoverPiSessions(
+          discovery.directories,
+          configuration.piArguments,
+          async () => sessionRoots,
+        );
         pushEntries(workspaceEntries);
       } catch {
-        /* fall through to path filter */
+        /* fall through */
       }
 
-      // Fallback: scan agent store and keep only sessions whose cwd is this folder tree.
+      // Fallback: same workspace folder only, never a global home-directory crawl.
       if (byPath.size === 0) {
-        const globalEntries = await discoverRecentPiSessionsGlobally(200);
-        pushEntries(globalEntries);
+        try {
+          const sessionRoots = workspacePiSessionRoots(cwd);
+          const { readdir } = await import("node:fs/promises");
+          const files: string[] = [];
+          for (const root of sessionRoots) {
+            try {
+              for (const name of await readdir(root)) {
+                if (name.endsWith(".jsonl")) files.push(join(root, name));
+              }
+            } catch { /* missing dir */ }
+          }
+          const entries = await Promise.all(
+            files.slice(0, 40).map((path) => readPiSessionMetadata(path)),
+          );
+          pushEntries(entries.filter((e): e is PiSessionCatalogEntry => Boolean(e)));
+        } catch { /* ignore */ }
       }
 
       this.#catalogSessions = [...byPath.values()]
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .slice(0, 40);
-      this.#emitChange();
+      const nextKey = this.#catalogSessions
+        .map((s) => `${s.path}|${s.title}|${s.updatedAt}`)
+        .join("\n");
+      if (nextKey !== prevKey) this.#emitChange();
     } catch {
       // Catalog is optional for welcome UI; keep previous list on failure.
     } finally {
