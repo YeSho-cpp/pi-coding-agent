@@ -344,6 +344,37 @@ export class WebviewActionDispatcher {
       case "openSettings":
         await vscode.commands.executeCommand("workbench.action.openSettings", "@ext:yesho.pi-coding-agent-vscode");
         return;
+      case "setStreamingBehavior": {
+        const behavior = message.behavior;
+        const scope = vscode.workspace.workspaceFolders?.[0]?.uri;
+        await vscode.workspace
+          .getConfiguration("piAgent", scope)
+          .update("composer.streamingBehavior", behavior, vscode.ConfigurationTarget.Global);
+        this.#registry.refreshConfigurationState();
+        connection.post({
+          type: "toast",
+          level: "info",
+          message: behavior === "steer"
+            ? "默认发送：Steer（流式中插队/转向）"
+            : "默认发送：Queue（等当前任务结束后排队）",
+        });
+        return;
+      }
+      case "setStreamingBehavior": {
+        const scope = vscode.workspace.workspaceFolders?.[0]?.uri;
+        await vscode.workspace
+          .getConfiguration("piAgent", scope)
+          .update("composer.streamingBehavior", message.behavior, vscode.ConfigurationTarget.Global);
+        this.#registry.refreshConfigurationState();
+        connection.post({
+          type: "toast",
+          level: "info",
+          message: message.behavior === "steer"
+            ? "默认发送：Steer（流式中插队/转向）"
+            : "默认发送：Queue（等当前任务结束后排队）",
+        });
+        return;
+      }
       case "revealPath": {
         const { Uri } = await import("vscode");
         const uri = Uri.file(message.path);
