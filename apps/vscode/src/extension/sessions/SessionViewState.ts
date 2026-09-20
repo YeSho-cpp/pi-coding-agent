@@ -43,7 +43,7 @@ export class SessionViewState {
       attachmentLimits,
       collapseTurnTrace,
       agentPermissionMode: "ask",
-      composerStreamingBehavior: "followUp",
+      composerStreamingBehavior: "steer",
       networkProxy: { mode: "inherit", label: "Inherited", restartRequired: false },
       questionTool: { configuredEnabled: false, appliedEnabled: false, restartRequired: false },
       pendingExtensionUi: [],

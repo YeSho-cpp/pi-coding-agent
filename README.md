@@ -116,7 +116,7 @@ Search **Pi Coding Agent** in VS Code Settings.
 | `piAgent.pi.executable` | `""` | Path to `pi` if not on PATH |
 | `piAgent.session.autoRename` | `true` | Name sessions from the first prompt |
 | `piAgent.agent.permissionMode` | `ask` | `ask` / `autoConfirm` / `restricted` |
-| `piAgent.composer.streamingBehavior` | `followUp` | `steer` or `followUp` |
+| `piAgent.composer.streamingBehavior` | `steer` | `steer` (插队) or `followUp` (排队) |
 
 ## Maintain / publish
 

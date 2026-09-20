@@ -10,7 +10,7 @@ export function readConfiguration(scope?: vscode.Uri): FrostUiConfiguration {
     ...(executable ? { piExecutable: executable } : {}),
     piArguments: config.get<string[]>("pi.arguments", []),
     startSessionOnOpen: config.get<boolean>("session.startOnOpen", false),
-    streamingBehavior: config.get<"steer" | "followUp">("composer.streamingBehavior", "followUp"),
+    streamingBehavior: config.get<"steer" | "followUp">("composer.streamingBehavior", "steer"),
     collapseTurnTrace: config.get<boolean>("conversation.collapseTurnTrace", true),
     questionToolEnabled: config.get<boolean>("questionTool.enabled", false),
     agentPermissionMode: config.get<"ask" | "autoConfirm" | "restricted">("agent.permissionMode", "ask"),

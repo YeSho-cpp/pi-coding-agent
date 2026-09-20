@@ -115,7 +115,7 @@ code --install-extension "artifacts/Pi Coding Agent-<version>.vsix"
 | `piAgent.pi.executable` | `""` | `pi` 不在 PATH 时的路径 |
 | `piAgent.session.autoRename` | `true` | 按首轮对话自动命名会话 |
 | `piAgent.agent.permissionMode` | `ask` | `ask` / `autoConfirm` / `restricted` |
-| `piAgent.composer.streamingBehavior` | `followUp` | `steer` 或 `followUp` |
+| `piAgent.composer.streamingBehavior` | `steer` | `steer` 或 `followUp` |
 
 ## 发布 / 维护
 
