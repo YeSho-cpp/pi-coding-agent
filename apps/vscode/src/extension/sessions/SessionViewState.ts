@@ -34,7 +34,7 @@ export class SessionViewState {
       isStreaming: false,
       isCompacting: false,
       isForking: false,
-      historyStatus: "loaded",
+      historyStatus: "deferred",
       model: null,
       thinkingLevel: "off",
       availableModels: [],

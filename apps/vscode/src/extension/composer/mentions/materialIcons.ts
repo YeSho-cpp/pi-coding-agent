@@ -176,13 +176,21 @@ export function materialIconFile(fileName: string, isDirectory: boolean): string
   return publishIconFile(iconId);
 }
 
-/** data:image/svg+xml;base64 for webview chips. */
+/** data:image/svg+xml;base64 for webview chips (cached — selection paths hit this often). */
+const dataUriCache = new Map<string, string>();
+
 export function materialIconDataUri(fileName: string, isDirectory: boolean): string | undefined {
+  const cacheKey = `${isDirectory ? "d" : "f"}:${fileName.toLowerCase()}`;
+  const cached = dataUriCache.get(cacheKey);
+  if (cached) return cached;
   const file = materialIconFile(fileName, isDirectory);
   if (!file) return undefined;
   try {
     const svg = fs.readFileSync(file);
-    return `data:image/svg+xml;base64,${svg.toString("base64")}`;
+    const uri = `data:image/svg+xml;base64,${svg.toString("base64")}`;
+    if (dataUriCache.size > 200) dataUriCache.clear();
+    dataUriCache.set(cacheKey, uri);
+    return uri;
   } catch {
     return undefined;
   }
