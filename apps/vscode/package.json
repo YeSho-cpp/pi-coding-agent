@@ -233,7 +233,7 @@
             "Deliver while the current run is active, after current tool calls.",
             "Deliver only after the current run fully settles."
           ],
-          "default": "followUp",
+          "default": "steer",
           "scope": "resource",
           "description": "Default delivery for normal prompts submitted while Pi is streaming. The Composer can override it per session; extension commands execute immediately."
         },
