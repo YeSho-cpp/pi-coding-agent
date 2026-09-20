@@ -193,13 +193,12 @@
     </div>
 
     <div class="session-actions">
-      {@const behavior = active.composerStreamingBehavior ?? "steer"}
       <button
         type="button"
         class="stream-behavior"
-        class:active={behavior === "steer"}
+        class:active={(active.composerStreamingBehavior ?? "steer") === "steer"}
         title="Steer：流式过程中插队/转向发送"
-        aria-pressed={behavior === "steer"}
+        aria-pressed={(active.composerStreamingBehavior ?? "steer") === "steer"}
         onclick={() => postToHost({ type: "setStreamingBehavior", behavior: "steer" })}
       >
         <span class="codicon codicon-debug-step-into" aria-hidden="true"></span>
@@ -208,9 +207,9 @@
       <button
         type="button"
         class="stream-behavior"
-        class:active={behavior === "followUp"}
+        class:active={(active.composerStreamingBehavior ?? "steer") === "followUp"}
         title="Queue：等当前任务结束后再发送"
-        aria-pressed={behavior === "followUp"}
+        aria-pressed={(active.composerStreamingBehavior ?? "steer") === "followUp"}
         onclick={() => postToHost({ type: "setStreamingBehavior", behavior: "followUp" })}
       >
         <span class="codicon codicon-list-ordered" aria-hidden="true"></span>
