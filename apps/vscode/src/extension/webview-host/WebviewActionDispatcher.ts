@@ -356,8 +356,6 @@ export class WebviewActionDispatcher {
       }
       case "listWelcomeResources": {
         this.#registry.refreshWelcomeLists();
-        // Force a fresh scan for the open welcome menu (user-triggered, not looped).
-        this.#catalogForce();
         await this.#registry.refreshWelcomeResources();
         const { readdir, stat, readFile } = await import("node:fs/promises");
         const os = await import("node:os");

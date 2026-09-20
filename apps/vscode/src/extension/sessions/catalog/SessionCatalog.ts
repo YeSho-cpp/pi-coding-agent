@@ -27,7 +27,7 @@ export interface PiSessionCatalogEntry {
 type SessionRootResolver = (cwd: string, piArguments: string[]) => Promise<string[]>;
 type SessionFileScanner = (roots: readonly string[]) => Promise<SessionFileScanResult>;
 
-const MAX_FILES = 2_000;
+const MAX_FILES = 200;
 const TAIL_BYTES = 384 * 1024;
 
 export async function discoverPiSessions(

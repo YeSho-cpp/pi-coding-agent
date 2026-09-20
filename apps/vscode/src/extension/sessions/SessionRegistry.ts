@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, access, unlink } from "node:fs/promises";
-import { basename, normalize, resolve } from "node:path";
+import { basename, join, normalize, resolve } from "node:path";
 
 /** Min ms between background welcome/catalog scans (CPU guard). */
 const WELCOME_SCAN_INTERVAL_MS = 30_000;
@@ -16,7 +16,7 @@ import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
-import { discoverPiSessions, readPiSessionMetadata, resolvePiAgentSessionsRoot, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
+import { discoverPiSessions, readPiSessionMetadata, workspacePiSessionRoots, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { SessionPersistence } from "./SessionPersistence.js";
