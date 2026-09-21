@@ -1,6 +1,9 @@
 /* Design tokens, shared primitives, shell layout, and cross-feature conversation contracts */
 
 :root {
+  color-scheme: light dark;
+
+  /* ── 间距 / 圆角 / 动效 ─────────────────────────────────────────── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -8,26 +11,128 @@
   --space-5: 20px;
   --space-6: 24px;
   --radius-xs: 4px;
-  --radius-sm: 7px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --motion-fast: 120ms;
+  --motion-normal: 170ms;
+
+  /* ── 字体 ──────────────────────────────────────────────────────── */
   --font-ui: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   --font-mono: var(--vscode-editor-font-family, "SFMono-Regular", Consolas, monospace);
   --font-size: var(--vscode-font-size, 13px);
-  /* Copilot Chat-like: same as VS Code UI font size, tighter line-height */
+  --font-size-ui: var(--vscode-font-size, 13px);
+  --font-size-compact: calc(var(--font-size-ui) - 1px);
+  --font-size-detail: calc(var(--font-size-ui) - 2px);
+  /* Copilot Chat-like: same as VS Code UI font size, tighter line-height.
+     These two must stay on :root: the host pushes the chat typography setting
+     through document.documentElement.style (bridge/applyHostMessage.ts), and an
+     inline style on <html> only wins against declarations on that same element.
+     Declaring them on .frostui-root or body would silently override the user's
+     own font choice. */
+  --frostui-chat-message-font-family: var(
+    --vscode-chat-font-family,
+    var(--vscode-font-family, var(--font-ui))
+  );
   --frostui-chat-message-font-size: var(--vscode-font-size, 13px);
   --frostui-chat-composer-font-size: var(--vscode-font-size, 13px);
   --line-height: 1.5;
+
+  /* ── 布局 ──────────────────────────────────────────────────────── */
   --header-height: 48px;
   --content-max-width: 820px;
   --composer-editor-min-height: 52px;
   --composer-editor-max-height: 160px;
-  --motion-fast: 120ms;
-  --motion-normal: 170ms;
+
+  /* ── 颜色：跟随 VS Code 主题 ───────────────────────────────────────
+     Everything lives on :root rather than .frostui-root because CodeMirror's
+     completion popup is portaled to document.body
+     (PromptEditor: tooltips({ parent: document.body })), so it inherits from
+     :root and would otherwise lose every one of these variables. */
+  --frost-bg: var(--vscode-sideBar-background, #1e1e1e);
+  --frost-bg-alt: var(--vscode-editor-background, #1e1e1e);
+  --frost-surface: var(--vscode-editorWidget-background, #252526);
+  /* Raised surface: menus, popups, the completion list, composer and cards.
+     Under most themes sideBar.background and editorWidget.background are the SAME
+     colour (Dark+ is #252526 for both), so the theme itself cannot express depth.
+     Mixing a little of the theme's own foreground back in lifts these planes
+     visibly without inventing a palette that breaks on other themes. */
+  --frost-surface-raised: color-mix(in srgb, var(--frost-surface) 92%, var(--frost-text));
+  --frost-hover: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.07));
+  --frost-active: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.28));
+  --frost-text: var(--vscode-foreground, #d4d4d4);
+  --frost-muted: var(--vscode-descriptionForeground, #9d9d9d);
+  --frost-faint: var(
+    --vscode-disabledForeground,
+    color-mix(in srgb, var(--frost-muted) 55%, transparent)
+  );
+  --frost-border: var(--vscode-widget-border, #303031);
+  --frost-border-soft: color-mix(in srgb, var(--frost-border) 55%, transparent);
+  --frost-input-bg: var(--vscode-input-background, #3c3c3c);
+  --frost-input-border: var(--vscode-input-border, #3c3c3c);
+
+  /* Accent: VS Code blue (Copilot/IDE-native) instead of deep warm gold-on-black */
+  --frost-focus: var(--vscode-focusBorder, #0078d4);
+  --frost-accent: var(--vscode-button-background, #0e639c);
+  --frost-accent-hover: var(--vscode-button-hoverBackground, #1177bb);
+  --frost-accent-text: var(--vscode-button-foreground, #ffffff);
+  --frost-secondary-bg: var(--vscode-button-secondaryBackground, #3a3d41);
+  --frost-secondary-hover: var(--vscode-button-secondaryHoverBackground, #45494e);
+  --frost-error: var(--vscode-errorForeground, #f48771);
+  --frost-warning: var(--vscode-editorWarning-foreground, #cca700);
+  --frost-success: var(--vscode-testing-iconPassed, #73c991);
+  --frost-link: var(--vscode-textLink-foreground, #4daafc);
+  --frost-code-bg: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
+  --frost-scrollbar: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.3));
+  --frost-scrollbar-hover: var(--vscode-scrollbarSlider-hoverBackground, rgba(121, 121, 121, 0.45));
+
+  /* Sunken plane: code wells and tool output recessed inside a card. */
+  --frost-well: var(--vscode-editor-background, #1e1e1e);
+
+  --frost-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  /* Popup shadow: the body-portaled completion list sits over arbitrary host
+     chrome, so it keeps the looser projection instead of the in-panel one. */
+  --frost-shadow-popover: 0 12px 34px rgba(0, 0, 0, 0.28);
 }
+
+/* VS Code puts the theme kind on <body>, so the light overrides are declared there.
+   --frost-border-soft and --frost-faint are derived from --frost-border /
+   --frost-muted; custom properties substitute at the element where they are
+   declared, so they must be restated here or they keep the dark-derived result
+   computed on :root. */
+body[data-vscode-theme-kind="vscode-light"],
+body.vscode-light {
+  --frost-bg: var(--vscode-sideBar-background, #f3f3f3);
+  --frost-bg-alt: var(--vscode-editor-background, #ffffff);
+  --frost-surface: var(--vscode-editorWidget-background, #ffffff);
+  /* Must be restated here: the dark mix above is computed on :root, and in a light
+     theme mixing toward the foreground would push the "raised" plane DOWN.
+     editor.background is the theme's own above-the-sidebar plane in light mode. */
+  --frost-surface-raised: var(--vscode-editor-background, #ffffff);
+  --frost-text: var(--vscode-foreground, #333);
+  --frost-muted: var(--vscode-descriptionForeground, #616161);
+  --frost-border: var(--vscode-widget-border, rgba(0, 0, 0, 0.12));
+  --frost-border-soft: color-mix(in srgb, var(--frost-border) 55%, transparent);
+  --frost-faint: var(
+    --vscode-disabledForeground,
+    color-mix(in srgb, var(--frost-muted) 55%, transparent)
+  );
+  --frost-accent: var(--vscode-button-background, #0e639c);
+  --frost-accent-text: var(--vscode-button-foreground, #fff);
+  --frost-focus: var(--vscode-focusBorder, #0e639c);
+  --frost-input-bg: var(--vscode-input-background, #ffffff);
+  --frost-link: var(--vscode-textLink-foreground, #0e639c);
+  --frost-code-bg: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.04));
+  /* Light themes put editor.background ABOVE the sidebar, so the well would collide
+     with the raised card. Nudge it down instead of reusing editor.background. */
+  --frost-well: color-mix(in srgb, var(--vscode-editor-background, #ffffff) 94%, var(--frost-text));
+}
+
 .frostui-root {
   height: 100%;
   min-width: 0;
+  user-select: text;
+  -webkit-user-select: text;
   background: var(--frost-bg);
   color: var(--frost-text);
   font-family: var(--font-ui);
@@ -81,13 +186,17 @@
 }
 .message { margin: 0 0 18px; }
 .message-user { display: flex; justify-content: flex-end; padding-left: min(18%, 110px); }
+/* The user's own message separates by HUE, not by brightness: a raised plate plus a
+   faint accent wash and accent-leaning edge. Brightness alone cannot carry it, because
+   sideBar.background and editorWidget.background are the same colour under most themes,
+   which left the user's turn looking like just another grey block. */
 .user-bubble {
   max-width: 100%;
   padding: 9px 12px;
-  background: color-mix(in srgb, var(--frost-surface) 82%, var(--frost-active));
-  border: 1px solid var(--frost-border-soft);
-  border-radius: 12px 12px 4px 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  background: color-mix(in srgb, var(--frost-accent) 10%, var(--frost-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--frost-accent) 28%, var(--frost-border-soft));
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 .message-actions {
   min-height: 23px;
@@ -173,11 +282,6 @@
    keeps one left edge while the panel keeps the full panel width. */
 .activity-content { margin: 0 5px 6px 5px; padding: 6px 0 0; }
 .thinking-pulse { margin-left: 1px; }
-:root {
-  --font-size-ui: var(--vscode-font-size, 13px);
-  --font-size-compact: calc(var(--font-size-ui) - 1px);
-  --font-size-detail: calc(var(--font-size-ui) - 2px);
-}
 
 @media (max-width: 430px) {
   .message-user { padding-left: 6%; }

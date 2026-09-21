@@ -1,6 +1,5 @@
 import "@vscode/codicons/dist/codicon.css";
 import "./styles/reset.css";
-import "./styles/vscode-theme.css";
 import "./styles/frost-ui-theme.css";
 import "./styles/tokens.css";
 import "./styles/sessions.css";

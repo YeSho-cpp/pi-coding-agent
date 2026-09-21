@@ -1,53 +1,7 @@
 /*
- * Pi Coding Agent theme — follow active VS Code color theme (e.g. Mermaid Dark).
- * Backgrounds/text come from workbench tokens first; only light accents remain.
- * Mermaid Dark / Dark VS editor ≈ #1E1E1E, foreground ≈ #D4D4D4.
+ * Pi Coding Agent component styling — session chrome, composer, activity cards.
+ * Design tokens live in tokens.css; this file only consumes them.
  */
-
-.frostui-root {
-  user-select: text;
-  -webkit-user-select: text;
-
-  /* Primary surfaces: VS Code theme (not forced warm black) */
-  --frost-bg: var(--vscode-sideBar-background, #1e1e1e);
-  --frost-bg-alt: var(--vscode-editor-background, #1e1e1e);
-  --frost-surface: var(--vscode-editorWidget-background, #252526);
-  --frost-surface-raised: var(--vscode-quickInput-background, #252526);
-  --frost-hover: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.07));
-  --frost-active: var(--vscode-list-activeSelectionBackground, rgba(0, 122, 204, 0.28));
-  --frost-text: var(--vscode-foreground, #d4d4d4);
-  --frost-muted: var(--vscode-descriptionForeground, #9d9d9d);
-  --frost-faint: var(--vscode-disabledForeground, color-mix(in srgb, var(--frost-muted) 55%, transparent));
-  --frost-border: var(--vscode-widget-border, #303031);
-  --frost-border-soft: color-mix(in srgb, var(--frost-border) 55%, transparent);
-  --frost-input-bg: var(--vscode-input-background, #3c3c3c);
-  --frost-input-border: var(--vscode-input-border, #3c3c3c);
-
-  /* Accent: VS Code blue (Copilot/IDE-native) instead of deep warm gold-on-black */
-  --frost-focus: var(--vscode-focusBorder, #0078d4);
-  --frost-accent: var(--vscode-button-background, #0e639c);
-  --frost-accent-hover: var(--vscode-button-hoverBackground, #1177bb);
-  --frost-accent-text: var(--vscode-button-foreground, #ffffff);
-  --frost-secondary-bg: var(--vscode-button-secondaryBackground, #3a3d41);
-  --frost-secondary-hover: var(--vscode-button-secondaryHoverBackground, #45494e);
-  --frost-error: var(--vscode-errorForeground, #f48771);
-  --frost-warning: var(--vscode-editorWarning-foreground, #cca700);
-  --frost-success: var(--vscode-testing-iconPassed, #73c991);
-  --frost-link: var(--vscode-textLink-foreground, #4daafc);
-  --frost-code-bg: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
-  --frost-scrollbar: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.3));
-  --frost-scrollbar-hover: var(--vscode-scrollbarSlider-hoverBackground, rgba(121, 121, 121, 0.45));
-  --frost-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --content-max-width: 820px;
-
-  /* Copilot Chat-like density */
-  --frostui-chat-message-font-family: var(--vscode-chat-font-family, var(--vscode-font-family, var(--font-ui)));
-  --frostui-chat-message-font-size: var(--vscode-font-size, 13px);
-  --frostui-chat-composer-font-size: var(--vscode-font-size, 13px);
-}
 
 /* Session header — thin, theme-native like Copilot chat chrome */
 .frostui-root .session-header {
@@ -116,16 +70,6 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-}
-
-.frostui-root .user-bubble,
-.frostui-root .message-user .user-bubble {
-  background: var(--frost-surface);
-  border: 1px solid var(--frost-border-soft);
-  border-radius: 8px;
-  user-select: text;
-  -webkit-user-select: text;
-  color: var(--frost-text);
 }
 
 /* Keep agent markdown readable on theme background */
@@ -205,7 +149,7 @@
 }
 
 .frostui-root .composer-box {
-  background: var(--frost-surface);
+  background: var(--frost-surface-raised);
   border-color: var(--frost-input-border);
   border-radius: 8px;
   box-shadow: none;
@@ -225,14 +169,14 @@
 .frostui-root .activity-row {
   border: 1px solid var(--frost-border-soft);
   border-radius: 8px;
-  background: var(--frost-surface);
+  background: var(--frost-surface-raised);
   margin: 4px 0;
   overflow: hidden;
   transition: border-color var(--motion-fast, 120ms), background var(--motion-fast, 120ms);
 }
 .frostui-root .activity-row[data-state="open"] {
   border-color: color-mix(in srgb, var(--frost-focus) 35%, var(--frost-border));
-  background: var(--frost-surface);
+  background: var(--frost-surface-raised);
 }
 .frostui-root .activity-trigger {
   min-height: 34px;
@@ -271,7 +215,7 @@
 .frostui-root .activity-content,
 .frostui-root .tool-activity-content {
   border-top: 1px solid var(--frost-border-soft);
-  background: var(--frost-bg-alt);
+  background: var(--frost-well);
   padding: 8px 10px 10px;
 }
 .frostui-root .activity-chevron { color: var(--frost-faint); }
@@ -337,22 +281,12 @@
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--frost-border-soft);
-  background: color-mix(in srgb, #282726 72%, transparent);
+  background: color-mix(in srgb, var(--frost-surface-raised) 92%, transparent);
   color: var(--frost-muted);
   font-size: 11px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
 }
 .frostui-root .session-progress-label { font-weight: 500; color: var(--frost-text); }
-
-/* Messages */
-.frostui-root .user-bubble,
-.frostui-root .message-user .user-bubble {
-  background: color-mix(in srgb, #282726 88%, transparent);
-  border: 1px solid var(--frost-border-soft);
-  border-radius: 14px 14px 4px 14px;
-  user-select: text;
-  -webkit-user-select: text;
-}
 
 /* Status dots */
 .frostui-root .status-dot.running,
@@ -362,20 +296,3 @@
 }
 .frostui-root .codicon-check { color: var(--frost-success); }
 .frostui-root .codicon-error { color: var(--frost-error); }
-
-/* Light theme fallback */
-body[data-vscode-theme-kind="vscode-light"] .frostui-root,
-.vscode-light .frostui-root {
-  --frost-bg: var(--vscode-sideBar-background, #f3f3f3);
-  --frost-bg-alt: var(--vscode-editor-background, #ffffff);
-  --frost-surface: var(--vscode-editorWidget-background, #ffffff);
-  --frost-text: var(--vscode-foreground, #333);
-  --frost-muted: var(--vscode-descriptionForeground, #616161);
-  --frost-border: var(--vscode-widget-border, rgba(0, 0, 0, 0.12));
-  --frost-accent: var(--vscode-button-background, #0e639c);
-  --frost-accent-text: var(--vscode-button-foreground, #fff);
-  --frost-focus: var(--vscode-focusBorder, #0e639c);
-  --frost-input-bg: var(--vscode-input-background, #ffffff);
-  --frost-link: var(--vscode-textLink-foreground, #0e639c);
-  --frost-code-bg: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.04));
-}

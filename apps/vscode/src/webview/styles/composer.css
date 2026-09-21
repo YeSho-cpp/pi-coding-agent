@@ -136,7 +136,7 @@
   border: 1px solid var(--frost-border);
   border-radius: 8px;
   background: var(--frost-surface-raised);
-  box-shadow: var(--frost-shadow);
+  box-shadow: var(--frost-shadow-popover);
   z-index: 80;
 }
 .cm-tooltip.cm-tooltip-autocomplete > ul {
