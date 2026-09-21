@@ -117,6 +117,14 @@ Search **Pi Coding Agent** in VS Code Settings.
 | `piAgent.session.autoRename` | `true` | Name sessions from the first prompt |
 | `piAgent.agent.permissionMode` | `ask` | `ask` / `autoConfirm` / `restricted` |
 | `piAgent.composer.streamingBehavior` | `steer` | `steer` (插队) or `followUp` (排队) |
+| `piAgent.updates.check` | `true` | Check once a day for a newer Pi CLI release and offer to update it. `PI_OFFLINE` / `PI_SKIP_VERSION_CHECK` suppress it too. |
+
+Commands: **Check for Pi CLI Update** (`piAgent.checkPiUpdate`) and **Update Pi CLI**
+(`piAgent.updatePi`, reinstalls with `pi update --force`). When a newer release exists it shows a
+notification **and a `$(cloud-download) Pi <version>` status bar entry** that stays until you update
+or pick **Skip This Version** — a notification alone is too easy to dismiss by accident. Both
+surfaces delegate to `pi update`, so the install method, Windows native-dependency quarantining and
+managed installations are handled by the CLI itself.
 
 ## Maintain / publish
 

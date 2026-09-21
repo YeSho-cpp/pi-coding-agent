@@ -6,6 +6,7 @@ import { DiagnosticLogger } from "./diagnostics/DiagnosticLogger.js";
 import { GIT_BASE_SCHEME, GitBaseContentProvider } from "./file-changes/GitBaseContentProvider.js";
 import { SessionStatusBar } from "./status-bar/SessionStatusBar.js";
 import { SessionRegistry } from "./sessions/SessionRegistry.js";
+import { PiUpdateNotifier } from "./updates/PiUpdateNotifier.js";
 import { PiViewProvider } from "./webview-host/PiViewProvider.js";
 import { SessionWebviewCoordinator } from "./webview-host/SessionWebviewCoordinator.js";
 
@@ -18,12 +19,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const viewProvider = new PiViewProvider(context.extensionUri, coordinator);
   const gitBaseProvider = new GitBaseContentProvider();
   const statusBar = new SessionStatusBar(registry);
+  const updates = new PiUpdateNotifier(context, logger);
   registryForDeactivate = registry;
 
   context.subscriptions.push(
     logger,
     coordinator,
     statusBar,
+    updates,
     gitBaseProvider,
     vscode.workspace.registerTextDocumentContentProvider(GIT_BASE_SCHEME, gitBaseProvider),
     vscode.window.registerWebviewViewProvider(PiViewProvider.viewType, viewProvider, {
@@ -46,7 +49,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  registerCommands(context, registry, viewProvider, coordinator, logger);
+  registerCommands(context, registry, viewProvider, coordinator, logger, updates);
+  updates.startScheduledCheck();
   logger.info("Pi Coding Agent extension activated");
   try {
     await registry.ensureInitialSession();

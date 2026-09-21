@@ -5,6 +5,7 @@ import { captureActiveSelection } from "../composer/mentions/captureSelection.js
 import { configurePiExecutable } from "../configuration/configurePiExecutable.js";
 import { exportDiagnostics } from "../diagnostics/exportDiagnostics.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
+import type { PiUpdateNotifier } from "../updates/PiUpdateNotifier.js";
 import { configureProxy, configureProxyCredentials } from "../network/configureProxy.js";
 import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import type { SessionRegistry } from "../sessions/SessionRegistry.js";
@@ -17,6 +18,7 @@ export function registerCommands(
   viewProvider: PiViewProvider,
   coordinator: SessionWebviewCoordinator,
   logger: DiagnosticLogger,
+  updates: PiUpdateNotifier,
 ): void {
   const proxySecrets = new ProxySecretStore(context.secrets);
   context.subscriptions.push(
@@ -52,5 +54,7 @@ export function registerCommands(
     vscode.commands.registerCommand("piAgent.configureProxyCredentials", () => configureProxyCredentials(registry, proxySecrets)),
     vscode.commands.registerCommand("piAgent.exportDiagnostics", () => exportDiagnostics(logger, registry.diagnosticsSummary())),
     vscode.commands.registerCommand("piAgent.configureExecutable", () => configurePiExecutable()),
+    vscode.commands.registerCommand("piAgent.checkPiUpdate", () => updates.checkForUpdates()),
+    vscode.commands.registerCommand("piAgent.updatePi", () => updates.updateNow()),
   );
 }

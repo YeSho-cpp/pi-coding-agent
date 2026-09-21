@@ -2,7 +2,7 @@
   "name": "pi-coding-agent-vscode",
   "displayName": "Pi Coding Agent UI",
   "description": "Visual VS Code UI for Pi Coding Agent. Uses your existing Pi CLI config, models, and sessions. Fork of FrostPi / Frost UI (AGPL-3.0).",
-  "version": "1.0.28",
+  "version": "1.1.2",
   "publisher": "yesho",
   "license": "AGPL-3.0-only",
   "private": false,
@@ -170,6 +170,14 @@
       {
         "command": "piAgent.configureProxyCredentials",
         "title": "Pi Coding Agent: Configure Proxy Credentials"
+      },
+      {
+        "command": "piAgent.checkPiUpdate",
+        "title": "Pi Coding Agent: Check for Pi CLI Update"
+      },
+      {
+        "command": "piAgent.updatePi",
+        "title": "Pi Coding Agent: Update Pi CLI"
       }
     ],
     "menus": {
@@ -337,6 +345,12 @@
           "default": true,
           "scope": "resource",
           "description": "Follow symbolic links during @ path completion."
+        },
+        "piAgent.updates.check": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine-overridable",
+          "description": "Check for a newer Pi CLI release once a day and offer to update it. Also suppressed by the PI_OFFLINE and PI_SKIP_VERSION_CHECK environment variables."
         }
       }
     }
