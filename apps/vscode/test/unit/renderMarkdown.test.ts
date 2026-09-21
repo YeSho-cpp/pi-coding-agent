@@ -70,9 +70,47 @@ describe("renderMarkdownHtml", () => {
     expect(root.querySelector("pre > .code-scroll > code")?.textContent).toBe("const x = 1\n");
   });
 
+  it("labels a tagged fence in a header band above the code", () => {
+    const html = renderMarkdownHtml("```rust\nfn main() {}\n```");
+    const root = document.createElement("div");
+    root.innerHTML = html;
+
+    expect(root.querySelector("pre > .code-head > .code-lang")?.textContent).toBe("rust");
+    // The header must stay outside the scrolling area, otherwise it scrolls away.
+    expect(root.querySelector(".code-scroll .code-head")).toBeNull();
+  });
+
+  it("labels untagged and indented blocks as txt so Copy still lands top-right", () => {
+    expect(renderMarkdownHtml("```\nplain\n```")).toContain('<span class="code-lang">txt</span>');
+    expect(renderMarkdownHtml("    indented code")).toContain('<span class="code-lang">txt</span>');
+  });
+
   it("gives indented code blocks the same fence chrome", () => {
     const html = renderMarkdownHtml("    indented code");
-    expect(html).toContain('<pre class="hljs"><span class="code-scroll"><code>indented code');
+    expect(html).toContain(
+      '<pre class="hljs"><span class="code-head"><span class="code-lang">txt</span></span>' +
+        '<span class="code-scroll"><code>indented code',
+    );
+  });
+
+  it("gives every code block exactly one header so actions have a home", () => {
+    const html = renderMarkdownHtml(
+      ["```ts", "const a = 1;", "```", "", "```", "plain", "```", "", "    indented", ""].join("\n"),
+    );
+    const root = document.createElement("div");
+    root.innerHTML = html;
+
+    const blocks = [...root.querySelectorAll("pre.hljs")];
+    expect(blocks).toHaveLength(3);
+    for (const pre of blocks) {
+      expect(pre.querySelectorAll(":scope > .code-head")).toHaveLength(1);
+      expect(pre.querySelector(":scope > .code-head > .code-lang")?.textContent).toBeTruthy();
+    }
+    expect(blocks.map((pre) => pre.querySelector(".code-lang")?.textContent)).toEqual([
+      "ts",
+      "txt",
+      "txt",
+    ]);
   });
 
   it("wraps prose-like fences and scrolls code fences", () => {
