@@ -6,9 +6,24 @@ import AdmZip from "adm-zip";
 import { ensureArtifacts, projectVersion, root } from "./lib.mjs";
 
 const artifacts = ensureArtifacts();
-const output = resolve(artifacts, `Frost UI-${projectVersion()}-source.zip`);
-const excludedNames = new Set(["node_modules", ".git", ".vscode-test", "coverage", ".DS_Store"]);
-const excludedFiles = new Set([basename(output), "Frost UI-latest-source.zip"]);
+const output = resolve(artifacts, `Pi Coding Agent-${projectVersion()}-source.zip`);
+const excludedNames = new Set([
+  "node_modules",
+  ".git",
+  ".vscode-test",
+  "coverage",
+  ".DS_Store",
+  // Build outputs are gitignored and were being archived as if they were source:
+  // every previously built VSIX ended up inside each new source archive.
+  "artifacts",
+]);
+const excludedFiles = new Set([
+  basename(output),
+  // Legacy names from before the rename, so a stale archive left in artifacts/ is never
+  // zipped back into the source archive.
+  "Frost UI-latest-source.zip",
+  "Pi Coding Agent-latest-source.zip",
+]);
 const zip = new AdmZip();
 
 function visit(path) {

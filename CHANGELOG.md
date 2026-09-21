@@ -4,6 +4,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-09-21
+
+### Added
+
+- **Pi CLI update check.** Pi only looks for its own updates from its interactive TUI, so a Pi driven over RPC — which is how this extension runs it — never reports a release. The extension now probes `pi --version`, compares it against `pi.dev/api/latest-version`, and offers **Update / Later / Skip This Version**, with a `$(cloud-download)` status bar entry that stays until the update is taken or the version is skipped. Updating runs `pi update`, so install-method detection, the Windows native-dependency quarantine and managed installations stay with the CLI. Suppressed by `PI_OFFLINE` and `PI_SKIP_VERSION_CHECK`; new setting `piAgent.updates.check`; new commands **Check for Pi CLI Update** and **Update Pi CLI**.
+
+### Fixed
+
+- The update check no longer stamps its once-a-day interval when the request never completed, and a stamp written by an older build no longer silences the check for that build's whole window.
+- Update-check diagnostics log at `info`; at the default level the `debug` lines were discarded, so the output channel could not confirm what the check had done.
+
+## [1.1.1] - 2026-09-21
+
+### Fixed
+
+- A pending release stays discoverable after its notification is dismissed: the status bar entry persists until the update is taken or the version is skipped.
+- A failed check no longer suppresses the next attempt for a day.
+
+## [1.1.0] - 2026-09-21
+
+### Added
+
+- Detect a newer Pi CLI release and update it from the notification.
+
+## [1.0.28] - 2026-09-21
+
+### Changed
+
+- Inline code is a chip: soft tinted fill, no border, `--radius-sm`, and it may wrap. The previous `white-space: nowrap` meant a single long path could not break and ran out of the bubble.
+
+## [1.0.27] - 2026-09-21
+
+### Fixed
+
+- `h5` and `h6` headings hold body size and step the weight down (500 / 400) instead of falling back to the browser's own defaults, which rendered them smaller than body copy with oversized margins.
+
+## [1.0.26] - 2026-09-21
+
+### Changed
+
+- Remove the per-block Wrap toggle; the wrapping default still follows the fence language.
+- Untagged fences and indented code blocks are labelled `txt`, so the Copy action always sits in the header.
+
+## [1.0.25] - 2026-09-21
+
+### Changed
+
+- Code blocks follow `--vscode-editor-font-size`, a notch below it.
+
+## [1.0.24] - 2026-09-21
+
+### Changed
+
+- Reading rhythm: line-height 1.5 → 1.7, paragraph gap .6em → .85em, and more room around and inside code blocks.
+
+## [1.0.23] - 2026-09-21
+
+### Fixed
+
+- Fences carry a real header now: the language label had rules but nothing ever rendered the element, and the hover actions were absolutely positioned over the first line of code.
+
+## [1.0.22] - 2026-09-21
+
+### Fixed
+
+- Panels, overlays and the user bubble no longer collapse into the page background, and the warm-black literals that made the user bubble, code actions and the table bar nearly black on light themes are gone.
+
+## [1.0.21] - 2026-09-21
+
+### Changed
+
+- Collapse the theme layer onto a single token source: `vscode-theme.css` removed, 33 duplicated custom properties eliminated. No visual change.
+
 ## [1.0.20] - 2026-09-21
 
 ### Added

@@ -6,7 +6,7 @@ import AdmZip from "adm-zip";
 
 import { projectVersion, root } from "./lib.mjs";
 
-const path = resolve(process.argv[2] ?? resolve(root, "artifacts", `Frost UI-${projectVersion()}.vsix`));
+const path = resolve(process.argv[2] ?? resolve(root, "artifacts", `Pi Coding Agent-${projectVersion()}.vsix`));
 if (!existsSync(path)) throw new Error(`VSIX not found: ${path}`);
 const zip = new AdmZip(path);
 const entries = zip.getEntries().map((entry) => entry.entryName);
