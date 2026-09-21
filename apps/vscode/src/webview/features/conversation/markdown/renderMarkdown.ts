@@ -283,8 +283,10 @@ function applyFileLinkPlugin(md: MarkdownIt): void {
 const WRAP_LANGUAGES = new Set(["txt", "text", "plaintext", "md", "markdown", "tex", "latex"]);
 
 /**
- * Fence chrome: the outer `pre` clips and hosts hover chrome; the inner
- * `.code-scroll` scrolls so the copy button stays fixed while code moves.
+ * Fence chrome: the outer `pre` clips, a `.code-head` carries the language label and the
+ * hover actions, and the inner `.code-scroll` scrolls so the actions stay put while code
+ * moves. Every fence gets a head so Copy always lands top-right; untagged fences and
+ * indented code blocks are labelled `txt` rather than left unlabelled.
  */
 function renderFenceHtml(code: string, language: string): string {
   const normalizedLanguage = language.toLowerCase();
@@ -296,7 +298,9 @@ function renderFenceHtml(code: string, language: string): string {
       : escapeHtml(code);
   const wrapClass = WRAP_LANGUAGES.has(normalizedLanguage) ? " wrap" : "";
   const languageClass = isDiff ? " language-diff" : "";
-  return `<pre class="hljs${wrapClass}${languageClass}"><span class="code-scroll"><code>${highlighted}</code></span></pre>`;
+  const label = normalizedLanguage || "txt";
+  const head = `<span class="code-head"><span class="code-lang">${escapeHtml(label)}</span></span>`;
+  return `<pre class="hljs${wrapClass}${languageClass}">${head}<span class="code-scroll"><code>${highlighted}</code></span></pre>`;
 }
 
 const markdown: MarkdownIt = new MarkdownIt({

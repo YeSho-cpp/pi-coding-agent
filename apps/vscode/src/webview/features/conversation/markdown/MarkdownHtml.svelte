@@ -28,22 +28,20 @@
 
   // ---- Code-block actions ----
 
-  // Only explicit user choices are stored. Without an override, each language
-  // keeps the wrapping default emitted by renderMarkdownHtml.
-  const wrapOverrides = new Map<number, boolean>();
-
   // Re-run after every render: `{@html}` replacement drops enhancements.
   $effect(() => {
     const root = container;
     if (!root) return;
     void html; // dependency on the rendered markup
     const images = mountMarkdownImages(root);
-    for (const [index, pre] of [...root.querySelectorAll("pre.hljs")].entries()) {
-      pre.setAttribute("data-code-block-index", String(index));
-      const wrapped = wrapOverrides.get(index) ?? pre.classList.contains("wrap");
-      pre.classList.toggle("wrap", wrapped);
-      pre.querySelector(":scope > .code-actions")?.remove();
-      pre.prepend(createCodeBlockActions(wrapped));
+    for (const pre of root.querySelectorAll("pre.hljs")) {
+      // Every markdown fence carries a .code-head, so the actions live there and never sit
+      // on top of the first line of code. Mermaid's error fallback has no head and keeps
+      // its own toolbar Copy button, so it is skipped here.
+      const head = pre.querySelector(":scope > .code-head");
+      if (!head) continue;
+      for (const stale of pre.querySelectorAll(".code-actions")) stale.remove();
+      head.append(createCodeBlockActions());
     }
     // OpenChamber-style: every markdown table gets a wrap + copy (TSV/Markdown) affordance.
     for (const table of [...root.querySelectorAll("table")]) {
@@ -88,30 +86,11 @@
       .join("\n");
   }
 
-  function createCodeBlockActions(wrapped: boolean): HTMLDivElement {
+  function createCodeBlockActions(): HTMLDivElement {
     const actions = document.createElement("div");
     actions.className = "code-actions";
-    actions.append(createWrapButton(wrapped), createCopyButton());
+    actions.append(createCopyButton());
     return actions;
-  }
-
-  function createWrapButton(wrapped: boolean): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "wrap-btn";
-    button.innerHTML = '<span class="codicon codicon-word-wrap" aria-hidden="true"></span><span class="wrap-btn-label"></span>';
-    updateWrapButton(button, wrapped);
-    return button;
-  }
-
-  function updateWrapButton(button: HTMLButtonElement, wrapped: boolean): void {
-    const actionLabel = wrapped ? "Disable line wrapping" : "Wrap long lines";
-    const visibleLabel = button.querySelector(".wrap-btn-label");
-    if (visibleLabel) visibleLabel.textContent = wrapped ? "Unwrap" : "Wrap";
-    button.classList.toggle("active", wrapped);
-    button.setAttribute("aria-pressed", String(wrapped));
-    button.setAttribute("aria-label", actionLabel);
-    button.title = actionLabel;
   }
 
   function createCopyButton(): HTMLButtonElement {
@@ -152,18 +131,6 @@
     if (tableCopy) {
       event.preventDefault();
       return; // handled by inline listener on the button
-    }
-
-    const wrapButton = target?.closest<HTMLButtonElement>("button.wrap-btn");
-    if (wrapButton) {
-      const pre = wrapButton.closest("pre");
-      if (!pre) return;
-      const wrapped = !pre.classList.contains("wrap");
-      pre.classList.toggle("wrap", wrapped);
-      updateWrapButton(wrapButton, wrapped);
-      const index = Number(pre.getAttribute("data-code-block-index"));
-      if (Number.isInteger(index) && index >= 0) wrapOverrides.set(index, wrapped);
-      return;
     }
 
     const copyButton = target?.closest("button.copy-btn");
