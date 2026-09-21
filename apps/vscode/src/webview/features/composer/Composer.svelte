@@ -38,6 +38,7 @@
     stripContextMentions,
   } from "./contextMention";
   import PromptEditor from "./PromptEditor.svelte";
+  import { pushPromptHistory, resetPromptHistoryNav } from "./promptHistoryStore";
   import StreamingSendButton from "./StreamingSendButton.svelte";
 
   let {
@@ -214,6 +215,8 @@
 
   function submit(requestedStreamingBehavior: StreamingBehavior = streamingBehavior): void {
     if (!canSend) return;
+    const submittedBody = draft.text;
+    if (submittedBody.trim()) pushPromptHistory(session.id, submittedBody);
     if (draft.images.length === 0 && contextChips.length === 0 && draft.text.trim() === "/resume") {
       if (surfaceKind === "panel") {
         showToast("info", "Open the Pi sidebar to resume a session.");
@@ -248,6 +251,7 @@
     const images = draft.images.map(({ id, name, mimeType, data, size }) => ({ id, name, mimeType, data, size }));
     pendingClearedRevision = clearDraftForSubmission(session.id);
     clearContextChips(session.id);
+    resetPromptHistoryNav(session.id);
     postToHost({
       type: "sendPrompt",
       requestId,

@@ -14,6 +14,7 @@
   import { promptCompletionConfigurationKey, shouldStartPromptCompletion } from "./completionPolicy";
   import { withFrostUiCommands } from "./frostuiCommands";
   import { indentPromptWithTab, insertPromptNewline, outdentPromptWithShiftTab } from "./promptEditing";
+  import { promptHistoryLength, recallPromptHistory } from "./promptHistoryStore";
   import { promptSyntax } from "./promptSyntax";
   import { commandCompletion } from "./commandCompletion";
   import { workspaceFileCompletion } from "./workspaceFileCompletion";
@@ -92,6 +93,40 @@
     return new EditorView({ state: createState(value), parent: host });
   }
 
+  function applyHistoryText(text: string): boolean {
+    const editor = view;
+    if (!editor) return false;
+    applyingExternal = true;
+    editor.dispatch({
+      changes: { from: 0, to: editor.state.doc.length, insert: text },
+      selection: { anchor: text.length },
+      scrollIntoView: true,
+    });
+    applyingExternal = false;
+    onchange(text);
+    editor.focus();
+    return true;
+  }
+
+  function runHistoryRecall(direction: "up" | "down"): boolean {
+    const editor = view;
+    if (!editor) return false;
+    if (editor.composing) return false;
+    if (promptHistoryLength(sessionId) === 0) return false;
+    const state = editor.state;
+    const doc = state.doc.toString();
+    const sel = state.selection.main;
+    const empty = doc.length === 0;
+    const caretAtStart = sel.empty && sel.from === 0;
+    const caretAtEnd = sel.empty && sel.to === state.doc.length;
+    // Shell-like: ↑ when empty or caret at start; ↓ when empty or caret at end (while browsing).
+    if (direction === "up" && !empty && !caretAtStart) return false;
+    if (direction === "down" && !empty && !caretAtEnd) return false;
+    const next = recallPromptHistory(sessionId, direction, doc);
+    if (next === null) return false;
+    return applyHistoryText(next);
+  }
+
   function createState(doc: string): EditorState {
     const allCommands = withFrostUiCommands(commands);
     return EditorState.create({
@@ -101,6 +136,9 @@
         // Mount completion outside the editor so composer/editor geometry cannot clip long lists.
         tooltips({ parent: document.body }),
         keymap.of([
+          // Prompt history (↑/↓) — before defaultKeymap so cursor-move does not win.
+          { key: "ArrowUp", run: () => runHistoryRecall("up") },
+          { key: "ArrowDown", run: () => runHistoryRecall("down") },
           ...completionKeymap,
           { key: "Tab", run: acceptCompletion },
           { key: "Tab", run: indentPromptWithTab, shift: outdentPromptWithShiftTab },
