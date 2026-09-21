@@ -311,5 +311,3 @@
   .launcher-expand.active { background: var(--frost-hover); opacity: 1; }
   .launcher-variants { display: flex; flex-direction: column; margin: 2px 0 2px 29px; padding-left: 3px; border-left: 2px solid var(--frost-border); }
 </style>
-  .stream-behavior :global(.codicon) { font-size: 11px; }
-</style>
