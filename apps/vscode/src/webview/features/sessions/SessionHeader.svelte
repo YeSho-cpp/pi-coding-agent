@@ -193,28 +193,6 @@
     </div>
 
     <div class="session-actions">
-      <button
-        type="button"
-        class="stream-behavior"
-        class:active={(active.composerStreamingBehavior ?? "steer") === "steer"}
-        title="Steer：流式过程中插队/转向发送"
-        aria-pressed={(active.composerStreamingBehavior ?? "steer") === "steer"}
-        onclick={() => postToHost({ type: "setStreamingBehavior", behavior: "steer" })}
-      >
-        <span class="codicon codicon-debug-step-into" aria-hidden="true"></span>
-        <span>Steer</span>
-      </button>
-      <button
-        type="button"
-        class="stream-behavior"
-        class:active={(active.composerStreamingBehavior ?? "steer") === "followUp"}
-        title="Queue：等当前任务结束后再发送"
-        aria-pressed={(active.composerStreamingBehavior ?? "steer") === "followUp"}
-        onclick={() => postToHost({ type: "setStreamingBehavior", behavior: "followUp" })}
-      >
-        <span class="codicon codicon-list-ordered" aria-hidden="true"></span>
-        <span>Queue</span>
-      </button>
       <div class="session-menu-wrap">
         <IconButton icon="add" label="New or resume session" active={launcherOpen} onclick={() => { launcherOpen = !launcherOpen; menuOpen = false; sessionListOpen = false; }} />
         {#if launcherOpen}
@@ -332,25 +310,6 @@
   .launcher-expand { flex: 0 0 auto; padding: 7px; opacity: 0.7; }
   .launcher-expand.active { background: var(--frost-hover); opacity: 1; }
   .launcher-variants { display: flex; flex-direction: column; margin: 2px 0 2px 29px; padding-left: 3px; border-left: 2px solid var(--frost-border); }
-  .stream-behavior {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 24px;
-    margin-right: 2px;
-    padding: 0 7px;
-    border: 1px solid var(--frost-border-soft);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--frost-muted);
-    font-size: 10.5px;
-    cursor: pointer;
-  }
-  .stream-behavior:hover { color: var(--frost-text); background: var(--frost-hover); }
-  .stream-behavior.active {
-    color: var(--frost-text);
-    border-color: color-mix(in srgb, var(--frost-focus) 45%, var(--frost-border));
-    background: color-mix(in srgb, var(--frost-focus) 12%, transparent);
-  }
+</style>
   .stream-behavior :global(.codicon) { font-size: 11px; }
 </style>
