@@ -3,6 +3,8 @@
   import type { SessionSummaryView, SessionViewModel } from "$shared/model/sessionViewModel";
 
   import { postToHost } from "../../bridge/vscodeBridge";
+  import type { McpServerView } from "$shared/model/mcpModel";
+  import { mcpServers } from "../../state/sessionViewStore.svelte";
   import { draftForHost } from "../composer/composerDraftSync";
   import IconButton from "../../primitives/IconButton.svelte";
   import StatusDot from "./StatusDot.svelte";
@@ -16,6 +18,9 @@
   let launcherVariantsOpen = $state(false);
   let sessionListOpen = $state(false);
   let extensionsMenuOpen = $state(false);
+  let mcpOpen = $state(false);
+  let mcpExpanded = $state<Record<string, boolean>>({});
+  let mcpFilters = $state<Record<string, string>>({});
   let hidden = $state(false);
   let titleInput = $state<HTMLInputElement | null>(null);
   let root = $state<HTMLElement | null>(null);
@@ -37,6 +42,7 @@
   });
 
   function closeMenus(): void {
+    mcpOpen = false;
     menuOpen = false;
     launcherOpen = false;
     launcherVariantsOpen = false;
@@ -46,6 +52,77 @@
 
   function toggleExtensionsMenu(): void {
     extensionsMenuOpen = !extensionsMenuOpen;
+  }
+
+  const mcpView = $derived($mcpServers);
+
+  function loadMcpServers(): void {
+    postToHost({ type: "readMcpServers", sessionId: active.id });
+  }
+
+  function toggleMcpMenu(): void {
+    const opening = !mcpOpen;
+    closeMenus();
+    mcpOpen = opening;
+    // Re-read on every open: the config is a file another process may have changed.
+    if (opening) loadMcpServers();
+  }
+
+  function toggleMcpServer(name: string): void {
+    const expanding = !mcpExpanded[name];
+    mcpExpanded[name] = expanding;
+    if (expanding) mcpFilters[name] ??= "";
+  }
+
+  function mcpToolsFor(server: McpServerView): string[] {
+    const names = server.catalog.kind === "uncached" ? [] : server.catalog.toolNames;
+    const query = (mcpFilters[server.name] ?? "").trim().toLowerCase();
+    return query ? names.filter((name) => name.toLowerCase().includes(query)) : names;
+  }
+
+  function toggleActionsMenu(): void {
+    const opening = !menuOpen;
+    closeMenus();
+    menuOpen = opening;
+  }
+
+  /** The switch being written, with the state it is trying to reach. */
+  let mcpPending: { server: string; enabled: boolean } | null = $state(null);
+
+  $effect(() => {
+    // Only the reply that reflects the switch releases it: a read issued before the switch can
+    // arrive first and would otherwise unlock the control while the write is still in flight.
+    const pending = mcpPending;
+    if (!pending || !mcpView) return;
+    const observed = mcpView.servers.find((server) => server.name === pending.server)?.enabled;
+    if (observed === pending.enabled) mcpPending = null;
+  });
+
+  /**
+   * Why the host would refuse the switch right now. Shown as a tooltip only — the host enforces
+   * the same rules and answers with a visible toast, so disabling the control here would turn a
+   * refused switch into a silent one.
+   */
+  function mcpToggleHint(): string | null {
+    if (active.status !== "ready") return "Wait for the Pi session to be ready";
+    if (active.isCompacting) return "Wait for the current Pi turn to finish";
+    return null;
+  }
+
+  function setMcpEnabled(server: McpServerView): void {
+    const target = !server.enabled;
+    mcpPending = { server: server.name, enabled: target };
+    postToHost({
+      type: "setMcpServerEnabled",
+      sessionId: active.id,
+      server: server.name,
+      enabled: target,
+    });
+    // A refused switch comes back as a toast with no list, so the control needs a way out when
+    // the host never answers with state that matches.
+    setTimeout(() => {
+      if (mcpPending?.server === server.name && mcpPending.enabled === target) mcpPending = null;
+    }, 4000);
   }
 
   function beginRename(): void {
@@ -230,7 +307,92 @@
         {/if}
       </div>
       <div class="session-menu-wrap">
-        <IconButton icon="ellipsis" label="Session actions" active={menuOpen} onclick={() => { menuOpen = !menuOpen; launcherOpen = false; sessionListOpen = false; }} />
+        <IconButton icon="server" label="MCP servers" active={mcpOpen} onclick={toggleMcpMenu} />
+        {#if mcpOpen}
+          <div class="session-menu mcp-panel">
+            <div class="mcp-head">
+              <span class="mcp-head-title">MCP servers</span>
+              <span class="mcp-head-count">{mcpView ? mcpView.servers.length : "…"}</span>
+              <button type="button" class="mcp-refresh" title="Re-read config" onclick={loadMcpServers}>⟳</button>
+            </div>
+            {#if mcpView?.warning}
+              <div class="mcp-warning">{mcpView.warning}</div>
+            {/if}
+            {#if !mcpView}
+              <div class="mcp-empty">Reading…</div>
+            {:else if mcpView.servers.length === 0}
+              <div class="mcp-empty">
+                No MCP servers yet. Pi reads them from <code>~/.pi/agent/mcp.json</code>, and the
+                <code>pi-mcp-adapter</code> package is what makes Pi understand that file.
+              </div>
+            {:else}
+              {#each mcpView.servers as server (server.name)}
+                <div class="mcp-server" class:mcp-off={!server.enabled}>
+                  <div class="mcp-server-row">
+                    <button type="button" class="mcp-server-head" onclick={() => toggleMcpServer(server.name)}>
+                      <span class="mcp-dot" data-state={server.enabled ? server.catalog.kind : "disabled"}></span>
+                      <span class="mcp-server-name">{server.name}</span>
+                      <span class="mcp-scope">{server.scope}</span>
+                      {#if server.catalog.kind !== "uncached"}
+                        <span class="mcp-tools-count">{server.catalog.toolNames.length}</span>
+                      {/if}
+                      <span
+                        class="codicon mcp-chevron"
+                        class:codicon-chevron-right={!mcpExpanded[server.name]}
+                        class:codicon-chevron-down={mcpExpanded[server.name]}
+                        aria-hidden="true"
+                      ></span>
+                    </button>
+                    <button
+                      type="button"
+                      class="mcp-switch"
+                      role="switch"
+                      aria-checked={server.enabled}
+                      aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name} for this workspace`}
+                      title={mcpToggleHint() ?? (server.enabled ? "Disable for this workspace" : "Enable for this workspace")}
+                      disabled={mcpPending?.server === server.name}
+                      onclick={() => setMcpEnabled(server)}
+                    ></button>
+                  </div>
+                  {#if mcpExpanded[server.name]}
+                    <div class="mcp-detail">
+                      {#if server.command}<code class="mcp-command" title={server.command}>{server.command}</code>{/if}
+                      {#if server.url}<code class="mcp-command" title={server.url}>{server.url}</code>{/if}
+                      {#if server.disabledByProject}
+                        <div class="mcp-note">Disabled for this workspace by <code>.pi/mcp.json</code>.</div>
+                      {/if}
+                      {#if server.catalog.kind === "uncached"}
+                        <div class="mcp-note">No catalog yet — Pi caches it the first time the server runs.</div>
+                      {:else}
+                        {#if server.catalog.kind === "expired"}
+                          <div class="mcp-note">Cached catalog is over a week old and refreshes on next use.</div>
+                        {/if}
+                        <input
+                          class="mcp-search"
+                          placeholder={`Search ${server.catalog.toolNames.length} tools…`}
+                          bind:value={mcpFilters[server.name]}
+                        />
+                        <div class="mcp-chip-row">
+                          {#each mcpToolsFor(server) as tool (tool)}
+                            <span class="mcp-chip">{tool}</span>
+                          {/each}
+                          {#if mcpToolsFor(server).length === 0}
+                            <span class="mcp-note">No tool matches.</span>
+                          {/if}
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            {/if}
+            <div class="mcp-foot">
+              <div>Switches write to <code>.pi/mcp.json</code> and apply after the Pi session restarts.</div>
+              <div>Catalog state only — live connection status lives in Pi's own TUI.</div>
+            </div>
+          </div>
+        {/if}
+        <IconButton icon="ellipsis" label="Session actions" active={menuOpen} onclick={toggleActionsMenu} />
         {#if menuOpen}
           <div class="session-menu">
             <button type="button" onclick={() => openSessionPanel()}><span class="codicon codicon-layout"></span> Open in editor tab</button>

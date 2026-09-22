@@ -131,6 +131,135 @@ button.session-heading.active { background: var(--frost-hover); }
   width: auto;
   z-index: 1;
 }
+/* MCP panel. Interactive rules are scoped `.session-menu.mcp-panel …` (0,3,0): the generic
+   menu rules sit at (0,1,1) and `.frostui-root .session-menu button` at (0,2,1), so a bare
+   `.mcp-switch` loses its `background` to `transparent` and the control vanishes the moment it
+   is switched off.
+   Both classes are on the *same* element, so the separator must be `.mcp-panel`, not a space —
+   `.session-menu .mcp-panel …` describes a descendant and matches nothing here. */
+.mcp-panel {
+  width: min(320px, calc(100vw - 14px));
+  /* The panel is absolutely positioned under the header; without a ceiling a long list simply
+     runs off the bottom of the webview with no way to scroll it. */
+  max-height: max(160px, calc(100vh - 88px));
+  overflow-y: auto;
+}
+.mcp-head { display: flex; align-items: center; gap: 6px; padding: 3px 4px 6px; }
+.mcp-head-title { color: var(--frost-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.mcp-head-count { padding: 0 5px; border-radius: 999px; background: var(--frost-hover); color: var(--frost-muted); font-size: 9.5px; }
+.session-menu.mcp-panel .mcp-refresh { width: auto; margin-left: auto; padding: 2px 5px; background: transparent; color: var(--frost-muted); font-size: 11px; line-height: 1; }
+.session-menu.mcp-panel .mcp-refresh:hover { color: var(--frost-text); background: var(--frost-hover); }
+.mcp-warning {
+  margin: 0 5px 5px;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--frost-warning) 16%, transparent);
+  color: var(--frost-warning);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+.mcp-empty { padding: 6px; color: var(--frost-muted); font-size: 10px; line-height: 1.45; }
+.mcp-server { border-radius: 5px; }
+/* The switch is the action, so only the row's own content is dimmed — leaving it at full
+   strength is what keeps a disabled server re-enableable. */
+.mcp-server.mcp-off .mcp-server-head,
+.mcp-server.mcp-off .mcp-detail { opacity: .55; }
+.mcp-server-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.session-menu.mcp-panel .mcp-server-head {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto auto 11px;
+  gap: 6px;
+  padding: 6px 4px 6px 7px;
+  min-width: 0;
+}
+.session-menu.mcp-panel .mcp-switch {
+  position: relative;
+  display: block;
+  /* Hit target stays at 24×24; the visible track is drawn inside it. Putting the track on a
+     pseudo-element also keeps it clear of `.session-menu button`'s transparent background, which
+     is what hid this control when it was switched off. */
+  width: 24px;
+  height: 24px;
+  margin: 0 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.session-menu.mcp-panel .mcp-switch::before {
+  content: "";
+  position: absolute;
+  inset: 6px 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--frost-muted) 55%, var(--frost-surface));
+}
+.session-menu.mcp-panel .mcp-switch::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--frost-surface-raised);
+  transition: left .12s ease;
+}
+.session-menu.mcp-panel .mcp-switch[aria-checked="true"]::before { background: var(--frost-success); }
+.session-menu.mcp-panel .mcp-switch[aria-checked="true"]::after { left: 12px; }
+.session-menu.mcp-panel .mcp-switch:hover:not(:disabled)::before { background: color-mix(in srgb, var(--frost-text) 45%, var(--frost-surface)); }
+.session-menu.mcp-panel .mcp-switch[aria-checked="true"]:hover:not(:disabled)::before { background: var(--frost-success); }
+.session-menu.mcp-panel .mcp-switch:disabled { opacity: .55; cursor: default; }
+.session-menu.mcp-panel .mcp-server-head > span { display: block; min-width: 0; }
+.mcp-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--frost-muted); }
+.mcp-dot[data-state="available"] { background: var(--frost-success); }
+.mcp-dot[data-state="expired"] { background: var(--frost-warning); }
+.mcp-dot[data-state="disabled"] { background: var(--frost-muted); }
+.session-menu.mcp-panel .mcp-server-name {
+  overflow: hidden;
+  color: var(--frost-text);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-scope { padding: 0 4px; border: 1px solid var(--frost-border-soft); border-radius: 3px; color: var(--frost-muted); font-size: 9px; }
+.mcp-tools-count { color: var(--frost-muted); font-size: 9.5px; }
+.mcp-chevron { color: var(--frost-muted); font-size: 11px; }
+.mcp-detail { padding: 2px 7px 7px 21px; }
+.mcp-command {
+  display: block;
+  max-width: 100%;
+  margin-bottom: 5px;
+  padding: 3px 5px;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background: var(--frost-input-bg);
+  color: var(--frost-muted);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-note { margin-bottom: 5px; color: var(--frost-muted); font-size: 9.5px; line-height: 1.4; }
+.mcp-search {
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 3px 6px;
+  background: var(--frost-input-bg);
+  border: 1px solid var(--frost-border-soft);
+  border-radius: var(--radius-xs);
+  color: var(--frost-text);
+  font-size: 10px;
+}
+.mcp-search:focus { outline: none; border-color: var(--frost-focus); }
+.mcp-chip-row { display: flex; flex-wrap: wrap; gap: 3px; max-height: 132px; overflow-y: auto; }
+.mcp-chip {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--frost-text) 8%, transparent);
+  color: var(--frost-muted);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+.mcp-foot { margin-top: 5px; padding: 5px 4px 2px; border-top: 1px solid var(--frost-border-soft); color: var(--frost-muted); font-size: 9px; line-height: 1.4; }
 .session-list-panel {
   position: absolute;
   z-index: 30;

@@ -488,6 +488,26 @@ export class SessionRuntime {
     };
   }
 
+  /**
+   * Switches a server through Pi's own `/mcp enable|disable`. The adapter writes only the project
+   * override file (`<cwd>/.pi/mcp.json`), never the server definition or its credentials, so the
+   * running process keeps the configuration it started with and the change lands on the next
+   * session start.
+   *
+   * The guards mirror branch switching: a prompt sent mid-turn would be steered into that turn
+   * rather than run as a command.
+   */
+  async setMcpServerEnabled(server: string, enabled: boolean): Promise<void> {
+    if (this.view.status !== "ready") throw new Error("Wait for the Pi session to be ready before switching an MCP server.");
+    if (this.view.isStreaming || this.view.isCompacting) throw new Error("Wait for the current Pi turn to finish before switching an MCP server.");
+    if (this.view.isNavigatingTree) throw new Error("Wait for the branch switch to finish before switching an MCP server.");
+    if (this.view.pendingExtensionUi.length > 0 || this.view.queuedSteers.length > 0 || this.view.queuedFollowUps.length > 0) {
+      throw new Error("Wait for the current Pi interaction to finish before switching an MCP server.");
+    }
+
+    await this.#requireApi().executeExtensionCommand("mcp", `${enabled ? "enable" : "disable"} ${server}`);
+  }
+
   markHistoryWaiting(): void {
     this.#viewState.setHistoryStatus("queued");
     this.#notifyChange();

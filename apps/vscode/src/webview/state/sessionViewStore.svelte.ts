@@ -1,6 +1,7 @@
 import { writable } from "svelte/store";
 
 import type { WebviewPresentationView } from "$shared/model/webviewPresentationModel";
+import type { McpServerView } from "$shared/model/mcpModel";
 
 export const EMPTY_PRESENTATION: WebviewPresentationView = {
   surface: { kind: "sidebar" },
@@ -27,6 +28,15 @@ export interface WelcomeResourcesView {
   extensionsPaths: string[];
 }
 export const welcomeResources = writable<WelcomeResourcesView | null>(null);
+
+export interface McpServersView {
+  sessionId: string;
+  servers: McpServerView[];
+  /** Set when a config file exists but could not be read or parsed. */
+  warning?: string;
+}
+/** Last MCP read for the displayed session; null until the panel asks for one. */
+export const mcpServers = writable<McpServersView | null>(null);
 
 export interface ToastItem {
   id: number;

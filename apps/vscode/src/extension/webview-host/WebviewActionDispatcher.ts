@@ -11,6 +11,7 @@ import { captureContextItems, contextId, pickContextItemsQuickPick } from "../co
 import { formatFileMention } from "../composer/mentions/formatFileMention.js";
 import type { ContextAttachItemView } from "../../shared/model/contextAttachModel.js";
 import { listEditorMentionSpecials } from "../composer/mentions/editorMentionSpecials.js";
+import { readMcpServers } from "../mcp/readMcpServers.js";
 import type { WorkspaceFileSearch } from "../fd/WorkspaceFileSearch.js";
 import { workspaceFileBoosts, workspaceFileExcludeRules } from "../composer/mentions/workspaceFileSearchContext.js";
 import { configurePiExecutable } from "../configuration/configurePiExecutable.js";
@@ -59,6 +60,8 @@ const SIDEBAR_ONLY_ACTIONS = new Set<WebviewToHostMessage["type"]>([
   "exportDiagnostics",
   "retryStart",
   "checkPiIntegration",
+  "readMcpServers",
+  "setMcpServerEnabled",
   "refreshCommands",
 ]);
 
@@ -70,6 +73,8 @@ const SIDEBAR_COLLECTION_TARGET_ACTIONS = new Set<WebviewToHostMessage["type"]>(
   "restartSession",
   "retryStart",
   "checkPiIntegration",
+  "readMcpServers",
+  "setMcpServerEnabled",
   "refreshCommands",
 ]);
 
@@ -307,6 +312,36 @@ export class WebviewActionDispatcher {
       case "checkPiIntegration":
         await this.#registry.checkPiIntegration(message.sessionId);
         return;
+      case "readMcpServers": {
+        // Resolve by the requested session, not by whatever this surface happens to display:
+        // the config read, the command target and the echoed id must all be the same session.
+        const session = this.#registry.sessionView(message.sessionId);
+        if (!session) throw new Error("This Pi session no longer exists.");
+        const result = await readMcpServers(session.cwd);
+        this.#logger.debug(`MCP servers read from ${result.paths.user}: ${result.servers.length}`);
+        connection.post({
+          type: "mcpServers",
+          sessionId: message.sessionId,
+          servers: result.servers,
+          ...(result.warning ? { warning: result.warning } : {}),
+        });
+        return;
+      }
+      case "setMcpServerEnabled": {
+        const session = this.#registry.sessionView(message.sessionId);
+        if (!session) throw new Error("This Pi session no longer exists.");
+        await this.#registry.setMcpServerEnabled(message.sessionId, message.server, message.enabled);
+        // Pi applies the override on its next start, so the panel is refreshed from the file the
+        // adapter just wrote rather than from anything the running process reports.
+        const result = await readMcpServers(session.cwd);
+        connection.post({
+          type: "mcpServers",
+          sessionId: message.sessionId,
+          servers: result.servers,
+          ...(result.warning ? { warning: result.warning } : {}),
+        });
+        return;
+      }
       case "refreshModels":
         await this.#registry.refreshModels(message.sessionId);
         return;

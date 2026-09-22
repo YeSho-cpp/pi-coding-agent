@@ -12,7 +12,7 @@ import { deliverWorkspaceFileSuggestions } from "../features/composer/fileSugges
 import { promptSubmissionResult } from "../features/composer/promptSubmissionStore.svelte";
 import { resolveForkResult } from "../features/conversation/forkMessageClient";
 import { deliverMarkdownImageResult } from "../features/conversation/markdown/markdownImageClient";
-import { composerFocusTick, presentationStore, showToast } from "../state/sessionViewStore.svelte";
+import { composerFocusTick, mcpServers, presentationStore, showToast } from "../state/sessionViewStore.svelte";
 import { get } from "svelte/store";
 
 export function applyHostMessage(message: HostToWebviewMessage): void {
@@ -109,6 +109,14 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
     case "welcomeResources":
       welcomeResources.set(message);
       break;
+    case "mcpServers": {
+      // A read is answered asynchronously; a reply for a session the reader has already left
+      // must not overwrite the list they are looking at.
+      const displayed = get(presentationStore).displayedSession?.id;
+      if (displayed && message.sessionId !== displayed) break;
+      mcpServers.set(message);
+      break;
+    }
   }
 }
 

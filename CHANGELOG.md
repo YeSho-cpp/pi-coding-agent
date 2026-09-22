@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.6] - 2026-09-21
+
+### Fixed
+
+- **A reply for another session no longer overwrites the list you are looking at.** The MCP read is answered asynchronously; the panel now drops a reply whose `sessionId` is not the displayed session, so switching sessions mid-read can no longer leave the previous session's servers on screen.
+- **One session throughout the switch.** The host resolved the config path from whichever session the surface displayed while issuing the command against the requested session. Both now resolve from the same `sessionId`, so a race could not write one session's override and read another's.
+- **An unreadable config is reported instead of looking empty.** `readMcpServers` treated every read failure as "file absent"; only `ENOENT` does now, so a permission error surfaces as a warning rather than as a workspace with no MCP servers.
+- **A silent project entry no longer re-enables a disabled definition.** Pi's merge keeps the lower layer's flag when an entry is present but carries no `disabled`/`enabled` key, and the panel now matches that: only an explicit key overrides.
+- **The switch waits for branch switching.** Toggling while a session-tree navigation is in progress was not guarded, so two extension commands could be in flight at once.
+- **The switch is released by the reply that reflects it.** Any refresh used to unlock the control, so a read still in flight could unlock it while the write was still running.
+
+### Changed
+
+- **The MCP panel scrolls instead of running off the bottom of the sidebar**, and the switch's hit target is now 24×24 while the visible track stays 20×12 — drawn on a pseudo-element, so it can no longer be lost to the generic menu-button background.
+
+## [1.1.5] - 2026-09-21
+
+### Fixed
+
+- The MCP switch renders again. The rules added in 1.1.4 were written as `.session-menu .mcp-panel …`,
+  which describes `.mcp-panel` as a *descendant* of `.session-menu` — but both classes sit on the same
+  element, so none of them matched. The switch fell back to the generic menu-button rule
+  (`background: transparent`) and the row fell back to `display: flex`, leaving no switch in either
+  state. The panel's rules now use the same-element form `.session-menu.mcp-panel …`, and the layout
+  and both switch states have been verified against the built stylesheet in a browser.
+
+## [1.1.4] - 2026-09-21
+
+### Fixed
+
+- The MCP panel's switch now survives being switched off. The generic `.session-menu button` rule
+  sets `background: transparent` at a higher specificity than the switch's own rule, so turning a
+  server off left the control invisible — the switch could be used once and then never found again.
+  The off state is now an opaque track, the row's dimming no longer reaches the switch, and the
+  switch's own dimensions outrank the generic menu buttons.
+- A switch no longer fails silently when the session cannot accept a command. The control stays
+  clickable and Pi's own guard answers with a visible toast naming the reason; previously the
+  control was disabled and the reason only appeared as a tooltip.
+
+## [1.1.3] - 2026-09-21
+
+### Added
+
+- **MCP server panel in the session header.** A `$(server)` button lists every MCP server the session can see, read from the same files Pi itself reads: the user layer (`~/.pi/agent/mcp.json`), the per-workspace override (`<cwd>/.pi/mcp.json`) and the adapter's tool-catalog cache (`~/.pi/agent/mcp-cache.json`). Each row shows where the server was defined and whether it is off, and expands to the resolved command and a searchable list of the tools in its cached catalog. A switch turns a server off **for that workspace only**, by running Pi's own `/mcp enable|disable` — the adapter rewrites just the override file, never the server definition or its credentials, and the panel re-reads the file afterwards so the row reflects what was actually written. Because Pi applies the override when it starts, the panel says the change lands on the next session start instead of offering the `/reload` its TUI would. It reports **catalog** state, not connection state: Pi exposes live connections only inside its own TUI, so the panel says whether a catalog is cached and how fresh it is rather than implying a health check.
+
 ## [1.1.2] - 2026-09-21
 
 ### Added

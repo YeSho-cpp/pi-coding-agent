@@ -2,6 +2,7 @@ import type { ChatTypographyView } from "../model/chatTypography.js";
 import type { ComposerDraftView } from "../model/composerDraftModel.js";
 import type { ContextAttachItemView } from "../model/contextAttachModel.js";
 import type { ConversationItemView } from "../model/conversationModel.js";
+import type { McpServerView } from "../model/mcpModel.js";
 import type { SessionViewModel } from "../model/sessionViewModel.js";
 import type { WebviewPresentationView } from "../model/webviewPresentationModel.js";
 import type { EditorMentionSpecialView, WorkspaceFileCandidateView } from "../model/workspaceFileModel.js";
@@ -78,6 +79,13 @@ export type HostToWebviewPayload =
       skillsPaths: string[];
       extensionsPaths: string[];
     }
-  | { type: "saveImageResult"; requestId: string; ok: boolean; path?: string; error?: string };
+  | { type: "saveImageResult"; requestId: string; ok: boolean; path?: string; error?: string }
+  | {
+      type: "mcpServers";
+      sessionId: string;
+      servers: McpServerView[];
+      /** Set when a config file exists but could not be read or parsed. */
+      warning?: string;
+    };
 
 export type HostToWebviewMessage = HostToWebviewPayload & { bridgeVersion: string };

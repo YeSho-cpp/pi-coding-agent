@@ -809,6 +809,16 @@ export class SessionRegistry implements vscode.Disposable {
     );
   }
 
+  /**
+   * Does not start a stopped session: the toggle is a config edit, and Pi has to be running for
+   * the adapter command to reach it — a dormant session says so instead of being woken for it.
+   */
+  async setMcpServerEnabled(sessionId: string, server: string, enabled: boolean): Promise<void> {
+    this.#assertSessionOutsideFork(sessionId);
+    const runtime = this.#requireRuntime(sessionId);
+    await runtime.setMcpServerEnabled(server, enabled);
+  }
+
   async loadHistory(sessionId: string): Promise<void> {
     this.#assertSessionOutsideFork(sessionId);
     const runtime = this.#requireRuntime(sessionId);
