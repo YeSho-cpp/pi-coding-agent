@@ -16,7 +16,7 @@ import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
-import { readPiSessionMetadata, workspacePiSessionRoots, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
+import { readPiSessionMetadata, sessionCwdInWorkspace, workspacePiSessionRoots, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { SessionPersistence } from "./SessionPersistence.js";
@@ -303,7 +303,7 @@ export class SessionRegistry implements vscode.Disposable {
     }
   }
 
-  /** Discover on-disk Pi sessions for the **current workspace folder only**. */
+  /** Discover on-disk Pi sessions for every open workspace folder (multi-root windows included). */
   async refreshCatalogSessions(): Promise<void> {
     if (this.#catalogRefreshInFlight) return;
     this.#catalogRefreshInFlight = true;
@@ -311,8 +311,8 @@ export class SessionRegistry implements vscode.Disposable {
       const prevKey = this.#catalogSessions
         .map((s) => `${s.path}|${s.title}|${s.updatedAt}`)
         .join("\n");
-      const cwd = activeWorkspaceFolder()?.uri.fsPath;
-      if (!cwd) {
+      const folders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
+      if (!folders.length) {
         if (this.#catalogSessions.length) {
           this.#catalogSessions = [];
           this.#emitChange();
@@ -325,11 +325,7 @@ export class SessionRegistry implements vscode.Disposable {
       );
       const byPath = new Map<string, CatalogSessionSummaryView>();
 
-      const inWorkspace = (sessionCwd: string): boolean => {
-        const a = sessionCwd.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
-        const b = cwd.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
-        return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
-      };
+      const inWorkspace = (sessionCwd: string): boolean => sessionCwdInWorkspace(sessionCwd, folders);
 
       const pushEntries = (entries: readonly PiSessionCatalogEntry[]): void => {
         for (const entry of entries) {
@@ -349,7 +345,7 @@ export class SessionRegistry implements vscode.Disposable {
       // Workspace session folder only: readdir + metadata. No git-worktree walk,
       // no ripgrep over the agent sessions tree (CPU guard).
       try {
-        const sessionRoots = workspacePiSessionRoots(cwd);
+        const sessionRoots = [...new Set(folders.flatMap((folder) => workspacePiSessionRoots(folder)))];
         const { readdir } = await import("node:fs/promises");
         const files: string[] = [];
         for (const root of sessionRoots) {
@@ -383,9 +379,7 @@ export class SessionRegistry implements vscode.Disposable {
   async openCatalogSessionByPath(path: string): Promise<string> {
     const entry = await readPiSessionMetadata(path);
     if (!entry) throw new Error("The selected Pi session file could not be read.");
-    const cwd = activeWorkspaceFolder()?.uri.fsPath;
-    const discovery = cwd ? await this.#discoverWorkingDirectories(cwd) : { directories: [] };
-    const directory = findSessionWorkingDirectory(discovery.directories, entry.cwd);
+    const directory = findSessionWorkingDirectory(await this.#discoverWorkspaceDirectories(), entry.cwd);
     return this.#openSession(entry, Boolean(directory), directory);
   }
 
@@ -471,11 +465,11 @@ export class SessionRegistry implements vscode.Disposable {
     this.#assertNoForkOperation();
     const cwd = activeWorkspaceFolder()?.uri.fsPath;
     if (!cwd) throw new Error("Open a workspace folder before resuming a Pi session.");
-    const discovery = await this.#discoverWorkingDirectories(cwd);
     const configuration = readConfiguration(workspaceUriForPath(cwd));
-    const entry = await pickPiSession(discovery.directories, configuration.piArguments);
+    const directories = await this.#discoverWorkspaceDirectories();
+    const entry = await pickPiSession(directories, configuration.piArguments);
     if (!entry) return undefined;
-    const directory = findSessionWorkingDirectory(discovery.directories, entry.cwd);
+    const directory = findSessionWorkingDirectory(directories, entry.cwd);
     return this.#openSession(entry, true, directory);
   }
 
@@ -862,6 +856,19 @@ export class SessionRegistry implements vscode.Disposable {
 
   #discoverOpenWorkspaceDirectories() {
     return Promise.all((vscode.workspace.workspaceFolders ?? []).map((folder) => this.#discoverWorkingDirectories(folder.uri.fsPath)));
+  }
+
+  /** Working directories across every open workspace folder, de-duplicated by path. */
+  async #discoverWorkspaceDirectories(): Promise<SessionWorkingDirectory[]> {
+    const seen = new Set<string>();
+    return (await this.#discoverOpenWorkspaceDirectories())
+      .flatMap((group) => group.directories)
+      .filter((directory) => {
+        const key = normalizedPath(directory.cwd);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
   }
 
   async #reconcilePersistedWorkingDirectories(): Promise<void> {

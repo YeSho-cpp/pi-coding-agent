@@ -9,6 +9,8 @@
   import BranchSummaryBlock from "./BranchSummaryBlock.svelte";
   import CompactionBlock from "./CompactionBlock.svelte";
   import CustomBlock from "./CustomBlock.svelte";
+  import ConversationFind from "./find/ConversationFind.svelte";
+  import { isFindShortcut } from "./find/findInConversation";
   import SessionNotice from "./SessionNotice.svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
 
@@ -16,6 +18,7 @@
   let scroller: HTMLDivElement;
   let content: HTMLDivElement;
   let followState = $state({ ...INITIAL_SCROLL_FOLLOW_STATE });
+  let findOpen = $state(false);
   let lastConversationContentRevision = 0;
   let lastTurnCount = 0;
   let programmaticScroll = false;
@@ -36,6 +39,35 @@
   });
 
   onDestroy(() => resizeObserver?.disconnect());
+
+  /**
+   * Find is owned by the conversation surface, the way Copilot Chat owns it: the keystroke only
+   * reaches here while focus is inside this webview, which is also the only time the reader is
+   * looking at the conversation rather than the editor.
+   *
+   * The listener runs in the **capture phase** on purpose. VS Code's own webview shell listens in
+   * the bubble phase and forwards every keydown to the workbench as `did-keydown`, where
+   * `actions.find` dispatches with no when-clause whenever an editor is open — so without
+   * stopping the event here, one Ctrl/Cmd+F would open this widget *and* the editor's. Capture
+   * runs first regardless of the shell having registered earlier; stopImmediatePropagation then
+   * keeps the shell from ever seeing the key.
+   */
+  $effect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (isFindShortcut(event)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        findOpen = true;
+        return;
+      }
+      if (event.key === "Escape" && findOpen && !event.defaultPrevented) {
+        event.preventDefault();
+        findOpen = false;
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  });
 
   $effect(() => {
     const contentRevision = session.conversationContentRevision;
@@ -139,6 +171,9 @@
       <div class="conversation-tail" aria-hidden="true"></div>
     </div>
   </div>
+  {#if findOpen}
+    <ConversationFind container={content} revision={session.conversationContentRevision} onclose={() => (findOpen = false)} />
+  {/if}
   {#if followState.mode === "paused"}<NewUpdatesButton count={followState.unseenUpdates} onclick={resumeFollowing} />{/if}
 </div>
 <TextSelectionMenu />

@@ -360,6 +360,21 @@ function record(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
 
+/**
+ * Whether a session's working directory belongs to any of the open workspace folders.
+ * Either direction (folder inside the session cwd counts), matching the single-root rule this
+ * replaces — multi-root (.code-workspace) windows pass every folder.
+ */
+export function sessionCwdInWorkspace(sessionCwd: string, roots: readonly string[]): boolean {
+  const a = sessionCwd.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  if (!a) return false;
+  return roots.some((root) => {
+    const b = root.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+    if (!b) return false;
+    return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+  });
+}
+
 export function samePath(left: string, right: string): boolean {
   const a = normalize(resolve(left));
   const b = normalize(resolve(right));

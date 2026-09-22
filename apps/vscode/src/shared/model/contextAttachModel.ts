@@ -4,7 +4,7 @@ export type ContextAttachKind = "file" | "selection" | "folder";
 export interface ContextAttachItemView {
   id: string;
   kind: ContextAttachKind;
-  /** Workspace-relative path */
+  /** Absolute filesystem path — sent to Pi as-is, never resolved against the session cwd */
   path: string;
   /** Selection only */
   startLine?: number;

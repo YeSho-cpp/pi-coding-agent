@@ -15,7 +15,7 @@ vi.mock("vscode", () => ({
 }));
 
 import { QuickPickItemKind } from "vscode";
-import { discoverPiSessions, prioritizeSessionRoots, readPiSessionMetadata, resolveSessionRoots } from "../../src/extension/sessions/catalog/SessionCatalog.js";
+import { discoverPiSessions, prioritizeSessionRoots, readPiSessionMetadata, resolveSessionRoots, sessionCwdInWorkspace } from "../../src/extension/sessions/catalog/SessionCatalog.js";
 import { buildSessionQuickPickItems } from "../../src/extension/sessions/catalog/SessionCatalogPicker.js";
 import { sessionPathKey, type SessionFileScanResult } from "../../src/extension/sessions/catalog/SessionFileScanner.js";
 import type { SessionWorkingDirectory } from "../../src/extension/sessions/SessionWorkingDirectories.js";
@@ -357,5 +357,27 @@ describe("session root resolution", () => {
       if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
       else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
     }
+  });
+});
+
+describe("sessionCwdInWorkspace", () => {
+  it("matches a session against any open root, in either direction", () => {
+    const roots = ["/Users/yesho/Code/AIE/cloudml-engine", "/Users/yesho/Code/HPN/sanity-check"];
+    expect(sessionCwdInWorkspace("/Users/yesho/Code/HPN/sanity-check/nccl_test", roots)).toBe(true);
+    expect(sessionCwdInWorkspace("/Users/yesho/Code/AIE/cloudml-engine", roots)).toBe(true);
+    expect(sessionCwdInWorkspace("/Users/yesho/Code/AIE", roots)).toBe(true); // root inside session cwd
+    expect(sessionCwdInWorkspace("/Users/yesho/Code/other", roots)).toBe(false);
+    expect(sessionCwdInWorkspace("/Users/yesho/Code/AIE/cloudml-engine-other", roots)).toBe(false);
+  });
+
+  it("normalizes separators, trailing slashes and case", () => {
+    expect(sessionCwdInWorkspace("C:\\Code\\App\\", ["c:/code/app"])).toBe(true);
+    expect(sessionCwdInWorkspace("/Users/yesho/Code/App///", ["/users/yesho/code/app"])).toBe(true);
+  });
+
+  it("rejects an empty path or an empty root set", () => {
+    expect(sessionCwdInWorkspace("", ["/a"])).toBe(false);
+    expect(sessionCwdInWorkspace("/a", [])).toBe(false);
+    expect(sessionCwdInWorkspace("/a", [""])).toBe(false);
   });
 });

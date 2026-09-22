@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9] - 2026-09-22
+
+### Fixed
+
+- **Attached file references are absolute.** The context chips (current file, selection, the `@`
+  search picker, and the editor ghost chip) carried workspace-relative paths, but Pi resolves the
+  reference it receives against the *session* working directory. In a multi-root window — or any
+  session whose folder differs from the file's — a chip such as `nccl_test/run_sanity_check.sh`
+  therefore resolved under the wrong root. Every producer now carries the absolute filesystem path
+  end to end, so the reference Pi reads is unambiguous; the chip keeps showing the short filename
+  and the full path on hover.
+- **The session list and Resume cover every folder of a multi-root (.code-workspace) window.**
+  Catalog discovery, the resume picker, and opening a catalog session all discovered sessions for a
+  single "active" folder, so sessions living under the workspace's other folders never appeared and
+  could not be resumed by folder. All open workspace folders are now scanned and de-duplicated, and
+  each row keeps its working-directory pill so folders stay tellable apart.
+
+## [1.1.8] - 2026-09-21
+
+### Fixed
+
+- **Ctrl/Cmd+F no longer opens the editor's find widget alongside the conversation's.** VS Code's
+  webview shell forwards every keydown to the workbench as `did-keydown`, where `actions.find`
+  dispatches with no when-clause as soon as any editor is open — so one keystroke with focus in the
+  conversation opened both find widgets. The conversation now claims the shortcut in the capture
+  phase and stops propagation before the shell can forward it: the editor's find stays untouched,
+  and the conversation's opens as it should, the way Copilot Chat behaves.
+
+## [1.1.7] - 2026-09-21
+
+### Added
+
+- **Find in the conversation (Ctrl/Cmd+F).** A find widget opens over the conversation, matches the
+  rendered message text — user messages, responses, thinking, notices, code and tool output — and
+  steps through matches with Enter / Shift+Enter or the arrows, counting `n / m` as you go.
+  Matching walks the painted DOM rather than the message store, so collapsed tools and folded turns
+  are never matched invisibly, and the count is what the reader can actually see.
+  Highlights are painted through the CSS Custom Highlight API: ranges are registered against the
+  document without touching it, which is what lets the conversation keep streaming into the find
+  results instead of wiping them on every re-render. Colour comes from the editor's own find-match
+  tokens, so the widget follows the active theme.
+  The keystroke is handled inside the extension's webview, where it only fires while focus is in
+  the conversation — the editor's own Ctrl+F is untouched.
+
 ## [1.1.6] - 2026-09-21
 
 ### Fixed

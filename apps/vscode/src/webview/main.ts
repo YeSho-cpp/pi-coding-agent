@@ -8,6 +8,7 @@ import "./styles/pickers.css";
 import "./styles/typography.css";
 import "./styles/markdown.css";
 import "./styles/motion.css";
+import "./styles/find.css";
 
 import { mount } from "svelte";
 

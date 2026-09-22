@@ -1,3 +1,5 @@
+import { basename, resolve } from "node:path";
+
 import * as vscode from "vscode";
 
 import type { ContextAttachItemView } from "../../../shared/model/contextAttachModel.js";
@@ -22,16 +24,18 @@ function chipIcon(pathOrName: string, isDirectory: boolean): { iconDataUri?: str
 export function captureContextItems(kind: "file" | "selection"): ContextAttachItemView[] {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.uri.scheme !== "file") return [];
-  const relative = vscode.workspace.asRelativePath(editor.document.uri, false);
-  const baseName = relative.split("/").pop() || relative;
+  // Absolute: a workspace-relative path is ambiguous in a multi-root (.code-workspace) window and
+  // Pi resolves chip references against the session cwd, which may be a different folder entirely.
+  const fsPath = editor.document.uri.fsPath;
+  const baseName = basename(fsPath);
 
   if (kind === "file") {
     return [{
       id: contextId(),
       kind: "file",
-      path: relative,
+      path: fsPath,
       label: baseName,
-      insertText: formatFileMention(relative),
+      insertText: formatFileMention(fsPath),
       ...chipIcon(baseName, false),
     }];
   }
@@ -41,11 +45,11 @@ export function captureContextItems(kind: "file" | "selection"): ContextAttachIt
   return [{
     id: contextId(),
     kind: "selection",
-    path: relative,
+    path: fsPath,
     startLine: start,
     endLine: end,
     label: `${baseName}:${start}-${end}`,
-    insertText: formatFileMention(relative, { start, end }),
+    insertText: formatFileMention(fsPath, { start, end }),
     ...chipIcon(baseName, false),
   }];
 }
@@ -65,7 +69,7 @@ export async function pickContextItemsQuickPick(
     limit: number,
     boosts: ReadonlySet<string>,
     options: WorkspaceFileSearchOptions,
-  ) => Promise<Array<{ path: string; name: string; directory: string; isDirectory: boolean }>>,
+  ) => Promise<Array<{ path: string; name: string; directory: string; isDirectory: boolean; absolutePath?: string }>>,
   cwd: string,
   mode: "filesAndFolders" | "folder" | "files",
 ): Promise<ContextAttachItemView[]> {
@@ -83,22 +87,31 @@ export async function pickContextItemsQuickPick(
   quickPick.ignoreFocusOut = true;
 
   type Row = vscode.QuickPickItem & {
-    candidate?: { path: string; name: string; isDirectory: boolean };
+    candidate?: { path: string; absolutePath: string; name: string; isDirectory: boolean };
   };
 
   let version = 0;
   let cachedRows: Row[] = [];
 
-  const toRow = (item: { path: string; name: string; directory: string; isDirectory: boolean }): Row => {
+  const toRow = (item: {
+    path: string;
+    absolutePath?: string;
+    name: string;
+    directory: string;
+    isDirectory: boolean;
+  }): Row => {
     const path = item.isDirectory && !item.path.endsWith("/") ? `${item.path}/` : item.path;
     const name = item.isDirectory ? `${item.name}/` : item.name;
+    // Search results are relative to `cwd`; resolve before the chip is built so the reference sent
+    // to Pi never depends on which folder the session happens to run in.
+    const absolutePath = item.absolutePath ?? resolve(cwd, item.path);
     return {
       label: name,
       description: item.directory && item.directory !== "." ? item.directory : ".",
       detail: path,
       iconPath: materialQuickPickIcon(item.name, item.isDirectory),
       alwaysShow: true,
-      candidate: { path, name, isDirectory: item.isDirectory },
+      candidate: { path: absolutePath, absolutePath, name, isDirectory: item.isDirectory },
     };
   };
 
@@ -108,9 +121,9 @@ export async function pickContextItemsQuickPick(
     return {
       id: contextId(),
       kind: c.isDirectory ? "folder" : "file",
-      path: c.path,
+      path: c.absolutePath,
       label: c.name,
-      insertText: formatFileMention(c.path),
+      insertText: formatFileMention(c.absolutePath),
       ...chipIcon(c.name, c.isDirectory),
     };
   };
@@ -147,6 +160,7 @@ export async function pickContextItemsQuickPick(
                 const parts = rel.split("/");
                 return {
                   path: rel,
+                  absolutePath: u.fsPath,
                   name: parts[parts.length - 1] || rel,
                   directory: parts.slice(0, -1).join("/"),
                   isDirectory: false,

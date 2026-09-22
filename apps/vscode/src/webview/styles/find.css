@@ -1,0 +1,8 @@
+/* Conversation find painting. `::highlight()` cannot live in a scoped component stylesheet — the
+   CSS Custom Highlight API paints ranges outside the DOM, so the rule belongs to the document. */
+::highlight(conversation-find) {
+  background-color: var(--vscode-editor-findMatchHighlightBackground, rgba(255, 213, 0, 0.32));
+}
+::highlight(conversation-find-active) {
+  background-color: var(--vscode-editor-findMatchBackground, rgba(255, 160, 0, 0.55));
+}

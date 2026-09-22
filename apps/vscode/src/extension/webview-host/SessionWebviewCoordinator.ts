@@ -172,6 +172,9 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
     }
 
     const relative = vscode.workspace.asRelativePath(editor.document.uri, false);
+    // The chip reference Pi receives must be absolute: relative paths are ambiguous across
+    // multi-root windows and Pi resolves them against the session cwd.
+    const fsPath = editor.document.uri.fsPath;
     const isEmpty = editor.selection.isEmpty;
     const startLine = editor.selection.start.line + 1;
     const endLine = isEmpty ? startLine : editor.selection.end.line + 1;
@@ -192,7 +195,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
     this.#lastEditorChipKey = key;
     const iconDataUri = materialIconDataUri(baseName, false);
     this.#lastEditorChipHint = {
-      path: relative,
+      path: fsPath,
       startLine,
       endLine,
       label: isEmpty ? baseName : `${baseName}:${startLine}-${endLine}`,
@@ -206,7 +209,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       available: true,
       attached: this.#editorChipAttached,
       hasSelection,
-      path: relative,
+      path: fsPath,
       startLine,
       endLine,
       label: isEmpty ? baseName : `${baseName}:${startLine}-${endLine}`,
