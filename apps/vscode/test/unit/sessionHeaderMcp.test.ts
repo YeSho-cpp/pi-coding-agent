@@ -163,7 +163,7 @@ describe("session header MCP panel", () => {
     expect(screen.getByText("No catalog yet — Pi caches it the first time the server runs.")).toBeTruthy();
   });
 
-  it("marks a server switched off for this workspace", async () => {
+  it("marks a server that is switched off", async () => {
     const container = openPanel([
       { ...cataloged("feishu-mcp-pro", ["wiki_get"]), enabled: false, disabledByProject: true },
     ]);
@@ -182,11 +182,11 @@ describe("session header MCP panel", () => {
     expect(container.querySelectorAll(".session-menu")).toHaveLength(1);
   });
 
-  it("asks the host to disable a server, scoped to this workspace", async () => {
+  it("asks the host to disable a server", async () => {
     openPanel([cataloged("feishu-mcp-pro", ["wiki_get"])]);
 
     await openMcpPanel();
-    await fireEvent.click(screen.getByLabelText("Disable feishu-mcp-pro for this workspace"));
+    await fireEvent.click(screen.getByLabelText("Disable feishu-mcp-pro everywhere"));
 
     expect(togglesSent()).toEqual([expect.objectContaining({
       type: "setMcpServerEnabled",
@@ -200,7 +200,7 @@ describe("session header MCP panel", () => {
     openPanel([{ ...cataloged("feishu-mcp-pro", ["wiki_get"]), enabled: false, disabledByProject: true }]);
 
     await openMcpPanel();
-    await fireEvent.click(screen.getByLabelText("Enable feishu-mcp-pro for this workspace"));
+    await fireEvent.click(screen.getByLabelText("Enable feishu-mcp-pro everywhere"));
 
     expect(togglesSent()).toEqual([expect.objectContaining({ enabled: true })]);
   });
@@ -213,7 +213,7 @@ describe("session header MCP panel", () => {
     expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false");
   });
 
-  it("explains why a switch would be refused, but leaves it clickable", async () => {
+  it("keeps the switch usable while the session is busy — the write needs no live Pi", async () => {
     mcpServers.set({ sessionId: "s1", servers: [cataloged("feishu-mcp-pro", ["wiki_get"])] });
     render(SessionHeader, {
       props: { sessions: [], active: { ...activeSession(), status: "running" } },
@@ -222,9 +222,11 @@ describe("session header MCP panel", () => {
     await openMcpPanel();
 
     const toggle = screen.getByRole<HTMLButtonElement>("switch");
-    expect(toggle.getAttribute("title")).toBe("Wait for the Pi session to be ready");
+    expect(toggle.disabled).toBe(false);
+    expect(toggle.getAttribute("title")).toBe(
+      "Applies to every session; takes effect after the Pi session restarts.",
+    );
 
-    // The host owns the rule: a silent disabled control would give no reason at all.
     await fireEvent.click(toggle);
     expect(togglesSent()).toHaveLength(1);
   });

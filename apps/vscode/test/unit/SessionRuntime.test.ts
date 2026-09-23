@@ -1044,57 +1044,6 @@ process.on("SIGTERM", () => process.exit(0));
     await runtime.stop();
     await expect(access(launch.requestDirectory)).rejects.toThrow();
   });
-  it("switches MCP servers through Pi's own /mcp command", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "frostui-runtime-mcp-"));
-    const promptsFile = join(dir, "prompts.json");
-    const fakePi = await writePromptRecordingPi(dir);
-    const previousPromptsFile = process.env.FROSTPI_TEST_PROMPTS_FILE;
-    process.env.FROSTPI_TEST_PROMPTS_FILE = promptsFile;
-    const runtime = new SessionRuntime(
-      "mcp-session",
-      dir,
-      "MCP",
-      () => runtimeConfiguration(fakePi),
-      new ProxySecretStore({ get: () => Promise.resolve(undefined) } as never),
-      { error: vi.fn(), info: vi.fn() } as never,
-      { onChange: vi.fn(), onEditorText: vi.fn() },
-    );
-    runtimes.push(runtime);
-
-    try {
-      await runtime.start();
-      await runtime.setMcpServerEnabled("feishu-mcp-pro", false);
-      await runtime.setMcpServerEnabled("feishu-mcp-pro", true);
-
-      // The adapter only understands this exact command text, and the panel never sends a raw
-      // prompt of its own.
-      expect(JSON.parse(await readFile(promptsFile, "utf8"))).toEqual([
-        "/mcp disable feishu-mcp-pro",
-        "/mcp enable feishu-mcp-pro",
-      ]);
-    } finally {
-      if (previousPromptsFile === undefined) delete process.env.FROSTPI_TEST_PROMPTS_FILE;
-      else process.env.FROSTPI_TEST_PROMPTS_FILE = previousPromptsFile;
-    }
-  });
-
-  it("refuses to switch an MCP server while the session is not ready", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "frostui-runtime-mcp-guard-"));
-    const runtime = new SessionRuntime(
-      "mcp-guard",
-      dir,
-      "MCP guard",
-      () => runtimeConfiguration(join(dir, "never-started.cjs")),
-      new ProxySecretStore({ get: () => Promise.resolve(undefined) } as never),
-      { error: vi.fn(), info: vi.fn() } as never,
-      { onChange: vi.fn(), onEditorText: vi.fn() },
-    );
-    runtimes.push(runtime);
-
-    await expect(runtime.setMcpServerEnabled("feishu-mcp-pro", false)).rejects.toThrow(
-      "Wait for the Pi session to be ready",
-    );
-  });
 });
 
 function conversationTurns(view: Readonly<SessionViewModel>): AgentTurnView[] {
@@ -1226,38 +1175,6 @@ process.stdin.on("data", chunk => {
       continue;
     }
     write(response);
-  }
-});
-process.on("SIGTERM", () => process.exit(0));
-`);
-  return fakePi;
-}
-
-/** Writes a fake Pi CLI that records the exact text of every prompt it is asked to run. */
-async function writePromptRecordingPi(dir: string): Promise<string> {
-  const fakePi = join(dir, "fake-prompt-pi.cjs");
-  await writeFile(fakePi, String.raw`#!/usr/bin/env node
-const fs = require("node:fs");
-const prompts = [];
-let input = "";
-process.stdin.setEncoding("utf8");
-process.stdin.on("data", chunk => {
-  input += chunk;
-  while (input.includes("\n")) {
-    const index = input.indexOf("\n");
-    const command = JSON.parse(input.slice(0, index));
-    input = input.slice(index + 1);
-    const response = { type: "response", id: command.id, command: command.type, success: true };
-    if (command.type === "get_state") response.data = { model: null, thinkingLevel: "off", isStreaming: false, isCompacting: false, sessionId: "mcp" };
-    else if (command.type === "get_available_models") response.data = { models: [] };
-    else if (command.type === "get_commands") response.data = { commands: [{ name: "mcp", source: "extension" }] };
-    else if (command.type === "get_entries") response.data = { entries: [], leafId: null };
-    else if (command.type === "get_session_stats") response.data = { sessionId: "mcp", userMessages: 0, assistantMessages: 0, toolCalls: 0, toolResults: 0, totalMessages: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }, cost: 0 };
-    else if (command.type === "prompt") {
-      prompts.push(command.message);
-      fs.writeFileSync(process.env.FROSTPI_TEST_PROMPTS_FILE, JSON.stringify(prompts));
-    }
-    process.stdout.write(JSON.stringify(response) + "\n");
   }
 });
 process.on("SIGTERM", () => process.exit(0));

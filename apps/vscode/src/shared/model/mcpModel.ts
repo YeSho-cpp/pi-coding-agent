@@ -18,6 +18,7 @@ export interface McpServerView {
   scope: "user" | "project";
   /** Effective state, with any project override applied. */
   enabled: boolean;
+  /** The project layer disables it locally; toggling the global switch clears this override. */
   disabledByProject: boolean;
   transport?: string;
   /** Joined argv for stdio servers. */

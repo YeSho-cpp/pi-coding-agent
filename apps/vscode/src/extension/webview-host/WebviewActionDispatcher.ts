@@ -12,6 +12,7 @@ import { formatFileMention } from "../composer/mentions/formatFileMention.js";
 import type { ContextAttachItemView } from "../../shared/model/contextAttachModel.js";
 import { listEditorMentionSpecials } from "../composer/mentions/editorMentionSpecials.js";
 import { readMcpServers } from "../mcp/readMcpServers.js";
+import { applyMcpServerEnabled } from "../mcp/writeMcpServerEnabled.js";
 import type { WorkspaceFileSearch } from "../fd/WorkspaceFileSearch.js";
 import { workspaceFileBoosts, workspaceFileExcludeRules } from "../composer/mentions/workspaceFileSearchContext.js";
 import { configurePiExecutable } from "../configuration/configurePiExecutable.js";
@@ -330,9 +331,9 @@ export class WebviewActionDispatcher {
       case "setMcpServerEnabled": {
         const session = this.#registry.sessionView(message.sessionId);
         if (!session) throw new Error("This Pi session no longer exists.");
-        await this.#registry.setMcpServerEnabled(message.sessionId, message.server, message.enabled);
-        // Pi applies the override on its next start, so the panel is refreshed from the file the
-        // adapter just wrote rather than from anything the running process reports.
+        // A config edit, not a Pi command: no live session is needed, and the running process
+        // picks the file up on its next start.
+        await applyMcpServerEnabled(session.cwd, message.server, message.enabled, process.env);
         const result = await readMcpServers(session.cwd);
         connection.post({
           type: "mcpServers",

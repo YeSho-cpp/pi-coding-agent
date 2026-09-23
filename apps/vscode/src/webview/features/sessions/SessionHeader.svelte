@@ -98,17 +98,6 @@
     if (observed === pending.enabled) mcpPending = null;
   });
 
-  /**
-   * Why the host would refuse the switch right now. Shown as a tooltip only — the host enforces
-   * the same rules and answers with a visible toast, so disabling the control here would turn a
-   * refused switch into a silent one.
-   */
-  function mcpToggleHint(): string | null {
-    if (active.status !== "ready") return "Wait for the Pi session to be ready";
-    if (active.isCompacting) return "Wait for the current Pi turn to finish";
-    return null;
-  }
-
   function setMcpEnabled(server: McpServerView): void {
     const target = !server.enabled;
     mcpPending = { server: server.name, enabled: target };
@@ -348,8 +337,8 @@
                       class="mcp-switch"
                       role="switch"
                       aria-checked={server.enabled}
-                      aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name} for this workspace`}
-                      title={mcpToggleHint() ?? (server.enabled ? "Disable for this workspace" : "Enable for this workspace")}
+                      aria-label={`${server.enabled ? "Disable" : "Enable"} ${server.name} everywhere`}
+                      title="Applies to every session; takes effect after the Pi session restarts."
                       disabled={mcpPending?.server === server.name}
                       onclick={() => setMcpEnabled(server)}
                     ></button>
@@ -359,7 +348,7 @@
                       {#if server.command}<code class="mcp-command" title={server.command}>{server.command}</code>{/if}
                       {#if server.url}<code class="mcp-command" title={server.url}>{server.url}</code>{/if}
                       {#if server.disabledByProject}
-                        <div class="mcp-note">Disabled for this workspace by <code>.pi/mcp.json</code>.</div>
+                        <div class="mcp-note">Disabled in this workspace by <code>.pi/mcp.json</code> — toggling clears this local override.</div>
                       {/if}
                       {#if server.catalog.kind === "uncached"}
                         <div class="mcp-note">No catalog yet — Pi caches it the first time the server runs.</div>
@@ -387,7 +376,7 @@
               {/each}
             {/if}
             <div class="mcp-foot">
-              <div>Switches write to <code>.pi/mcp.json</code> and apply after the Pi session restarts.</div>
+              <div>Switches write the global MCP config (<code>~/.pi/agent/mcp.json</code>) and apply after the Pi session restarts.</div>
               <div>Catalog state only — live connection status lives in Pi's own TUI.</div>
             </div>
           </div>

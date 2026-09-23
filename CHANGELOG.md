@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.10] - 2026-09-22
+
+### Changed
+
+- **The MCP switch is now global.** It used to run Pi's `/mcp disable`, which writes a
+  workspace-scoped override in `<session-cwd>/.pi/mcp.json` — disabling a server in one folder left
+  it running in every other folder, which reads as a toggle that does not work. The switch now
+  writes the user-level config where the server is defined (`~/.pi/agent/mcp.json`), so one click
+  turns it off or on for every session, and it clears this session's local override as well so the
+  change shows up immediately instead of being shadowed. Because this is a file edit rather than a
+  Pi command, a dormant session can be toggled too, and the row says "everywhere" rather than "for
+  this workspace". A workspace that still carries its own override says so, and toggling clears it.
+
 ## [1.1.9] - 2026-09-22
 
 ### Fixed
