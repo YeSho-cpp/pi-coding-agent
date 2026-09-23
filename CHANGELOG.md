@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.11] - 2026-09-23
+
+### Changed
+
+- **Context-chip icons follow the active file icon theme.** Chips used to read Material Icon
+  Theme — and only if it happened to be installed. They now read whichever file icon theme VS Code
+  has active (Material, vscode-icons, Symbols, anything that ships SVG artwork), so the chip
+  matches the explorer the reader already set up. When no usable theme is active — including VS
+  Code's default Seti, which draws from a font rather than files — they fall back to a bundled
+  subset of Material Icon Theme (MIT,85 icons covering common extensions, filenames and folders,
+  under `assets/icons` with the license alongside), and finally to the plain codicon. Colour icons
+  therefore work out of the box, offline, with nothing installed and without touching the user's
+  icon-theme choice. Artwork is cached per theme, so switching themes refreshes instead of serving
+  the previous theme's icons.
+
 ## [1.1.10] - 2026-09-22
 
 ### Changed

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/vscode/assets/icon.png" alt="Pi Coding Agent UI" width="128">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/apps/vscode/assets/icon.png" alt="Pi Coding Agent UI" width="128">
 </p>
 
 <h1 align="center">Pi Coding Agent UI</h1>
@@ -33,10 +33,10 @@
 它**不替代** Pi CLI，而是启动本机已安装的 `pi`，并复用 `~/.pi/agent`（模型、会话、技能、配置）。
 
 <p align="center">
-  <img src="assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
 </p>
 <p align="center">
-  <img src="assets/screenshots/welcome-session-list.png" alt="VS Code 中的 Pi 导览会话列表" width="720">
+  <img src="https://raw.githubusercontent.com/YeSho-cpp/pi-coding-agent/master/assets/screenshots/welcome-session-list.png" alt="VS Code 中的 Pi 导览会话列表" width="720">
 </p>
 
 ## VS Code 适配（为什么是编辑器扩展）

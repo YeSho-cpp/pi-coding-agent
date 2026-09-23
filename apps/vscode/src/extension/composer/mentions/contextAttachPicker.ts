@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import type { ContextAttachItemView } from "../../../shared/model/contextAttachModel.js";
 import type { WorkspaceFileSearchOptions } from "../../fd/fdArgs.js";
 import { formatFileMention } from "./formatFileMention.js";
-import { materialIconDataUri, materialQuickPickIcon } from "./materialIcons.js";
+import { fileIconDataUri, fileIconQuickPickIcon } from "./fileIcons.js";
 
 export function contextId(prefix = "ctx"): string {
   const rand =
@@ -16,7 +16,7 @@ export function contextId(prefix = "ctx"): string {
 }
 
 function chipIcon(pathOrName: string, isDirectory: boolean): { iconDataUri?: string } {
-  const uri = materialIconDataUri(pathOrName, isDirectory);
+  const uri = fileIconDataUri(pathOrName, isDirectory);
   return uri ? { iconDataUri: uri } : {};
 }
 
@@ -109,7 +109,7 @@ export async function pickContextItemsQuickPick(
       label: name,
       description: item.directory && item.directory !== "." ? item.directory : ".",
       detail: path,
-      iconPath: materialQuickPickIcon(item.name, item.isDirectory),
+      iconPath: fileIconQuickPickIcon(item.name, item.isDirectory),
       alwaysShow: true,
       candidate: { path: absolutePath, absolutePath, name, isDirectory: item.isDirectory },
     };

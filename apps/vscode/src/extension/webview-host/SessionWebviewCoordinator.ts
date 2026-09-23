@@ -4,7 +4,7 @@ import type { ComposerDraftView } from "../../shared/model/composerDraftModel.js
 import type { ContextAttachItemView } from "../../shared/model/contextAttachModel.js";
 import { ComposerExternalEditor } from "../composer/ComposerExternalEditor.js";
 import { captureContextItemsForHint } from "../composer/mentions/contextAttachPicker.js";
-import { materialIconDataUri } from "../composer/mentions/materialIcons.js";
+import { fileIconDataUri } from "../composer/mentions/fileIcons.js";
 import { readChatTypography } from "../configuration/readChatTypography.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import type { SessionRegistry } from "../sessions/SessionRegistry.js";
@@ -193,7 +193,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       }
     }
     this.#lastEditorChipKey = key;
-    const iconDataUri = materialIconDataUri(baseName, false);
+    const iconDataUri = fileIconDataUri(baseName, false);
     this.#lastEditorChipHint = {
       path: fsPath,
       startLine,
