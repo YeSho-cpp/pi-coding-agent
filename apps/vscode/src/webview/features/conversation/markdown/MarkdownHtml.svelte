@@ -2,6 +2,7 @@
   import { postToHost } from "../../../bridge/vscodeBridge";
   import { ensureKatex, isKatexReady, renderMarkdownHtml } from "./renderMarkdown";
   import { mountMarkdownImages } from "./mountMarkdownImages";
+  import { requestHighlightedCode } from "./highlightClient";
 
   let { content }: { content: string } = $props();
 
@@ -42,6 +43,25 @@
       if (!head) continue;
       for (const stale of pre.querySelectorAll(".code-actions")) stale.remove();
       head.append(createCodeBlockActions());
+    }
+
+    // Upgrade each fence from the instant highlight.js paint to the host's TextMate pass, which
+    // tokens like identifiers the way the editor does. Diff fences keep their dedicated renderer.
+    for (const pre of root.querySelectorAll("pre.hljs:not([data-tm])")) {
+      const element = pre as HTMLElement;
+      if (element.classList.contains("language-diff")) continue;
+      const lang = element.querySelector(":scope > .code-head > .code-lang")?.textContent?.trim().toLowerCase();
+      if (!lang || lang === "txt") continue;
+      const codeEl = element.querySelector(":scope > .code-scroll > code");
+      if (!codeEl) continue;
+      const text = codeEl.textContent ?? "";
+      if (!text) continue;
+      element.dataset.tm = "pending";
+      void requestHighlightedCode(lang, text).then((html) => {
+        if (!html || !element.isConnected || element.dataset.tm !== "pending") return;
+        codeEl.innerHTML = html;
+        element.dataset.tm = "done";
+      });
     }
     // OpenChamber-style: every markdown table gets a wrap + copy (TSV/Markdown) affordance.
     for (const table of [...root.querySelectorAll("table")]) {

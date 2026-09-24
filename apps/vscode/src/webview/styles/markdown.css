@@ -153,11 +153,13 @@
    The old `white-space: nowrap` meant one long path could not break and simply ran out of
    the bubble (measured 76px of clipped overflow in a 300px column). */
 .markdown-body code:not(pre code) {
-  margin: 0 2px;
-  padding: 2px 6px;
+  /* Proportional padding and a 3px radius: the fixed 2px/6px + radius-sm metrics from bed10c4
+     made short identifiers read as tall pills beside Copilot Chat's tighter chips. */
+  margin: 0 1px;
+  padding: .1em .35em;
   border: 0;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--md-inline-code-fg) 14%, var(--md-inline-code-bg));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--md-inline-code-fg) 10%, var(--md-inline-code-bg));
   color: var(--md-inline-code-fg);
   font-family: var(--font-mono);
   font-size: .9em;
@@ -178,7 +180,7 @@
   overflow: clip;
   background: var(--md-code-bg);
   border: 1px solid var(--md-code-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--md-code-fg);
   font-family: var(--font-mono);
   /* Follows the editor's code font, but a notch smaller: taking editor.fontSize raw
@@ -195,14 +197,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 26px;
-  padding: 2px 6px 2px 14px;
+  min-height: 24px;
+  /* Left padding matches the code body so the language label sits on the code column. */
+  padding: 2px 6px 2px 16px;
   border-bottom: 1px solid var(--md-code-border);
 }
 .markdown-body pre .code-scroll {
   display: block;
   overflow: auto;
-  padding: 12px 16px 14px;
+  padding: 12px 16px;
 }
 .markdown-body pre code {
   display: block;
@@ -265,7 +268,7 @@
 .hljs-comment,
 .hljs-quote,
 .hljs-meta,
-.hljs-doctag { color: var(--md-syn-comment); font-style: italic; }
+.hljs-doctag { color: var(--md-syn-comment); }
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-literal,

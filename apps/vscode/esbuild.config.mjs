@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { copyFileSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
 
 import esbuild from "esbuild";
 
@@ -42,3 +43,10 @@ await Promise.all([
     logLevel: "info",
   }),
 ]);
+
+// Oniguruma is a binary: esbuild bundles its JS loader, the wasm ships next to the bundle and
+// the TextMate highlighter loads it from __dirname at runtime.
+copyFileSync(
+  createRequire(import.meta.url).resolve("vscode-oniguruma/release/onig.wasm"),
+  "dist/extension/onig.wasm",
+);

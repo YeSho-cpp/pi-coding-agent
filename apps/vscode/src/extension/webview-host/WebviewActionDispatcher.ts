@@ -8,6 +8,7 @@ import type { ComposerDraftView } from "../../shared/model/composerDraftModel.js
 import { captureActiveFileReference } from "../composer/mentions/captureActiveFile.js";
 import { captureActiveSelection } from "../composer/mentions/captureSelection.js";
 import { captureContextItems, contextId, pickContextItemsQuickPick } from "../composer/mentions/contextAttachPicker.js";
+import { highlightFence } from "../highlight/codeHighlighter.js";
 import { formatFileMention } from "../composer/mentions/formatFileMention.js";
 import type { ContextAttachItemView } from "../../shared/model/contextAttachModel.js";
 import { listEditorMentionSpecials } from "../composer/mentions/editorMentionSpecials.js";
@@ -326,6 +327,11 @@ export class WebviewActionDispatcher {
           servers: result.servers,
           ...(result.warning ? { warning: result.warning } : {}),
         });
+        return;
+      }
+      case "highlightCode": {
+        const html = await highlightFence(message.lang, message.code);
+        connection.post({ type: "highlightCodeResult", requestId: message.requestId, html });
         return;
       }
       case "setMcpServerEnabled": {

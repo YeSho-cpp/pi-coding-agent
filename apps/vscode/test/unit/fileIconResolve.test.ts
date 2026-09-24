@@ -67,7 +67,7 @@ describe("iconSources", () => {
     expect(iconSources({ fileName: "x", isDirectory: false, light: false, theme: null, bundled })).toEqual([
       { root: "bundled", rel: "file.svg" },
     ]);
-    expect(iconSources({ fileName: "x", isDirectory: false, light: false, theme: undefined, bundled: {} })).toEqual([]);
+    expect(iconSources({ fileName: "x", isDirectory: false, light: false, theme: null, bundled: {} })).toEqual([]);
   });
 });
 

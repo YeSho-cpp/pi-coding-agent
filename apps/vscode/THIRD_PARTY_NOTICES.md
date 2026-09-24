@@ -1,6 +1,6 @@
 # Third-party notices
 
-FrostPi bundles the following production dependencies. Copyright remains with their respective authors. License identifiers are taken from installed package metadata; consult each linked project for complete license text and notices.
+Frost UI bundles the following production dependencies. Copyright remains with their respective authors. License identifiers are taken from installed package metadata; consult each linked project for complete license text and notices.
 
 | Package | Version | License | Project |
 |---|---:|---|---|
@@ -28,6 +28,7 @@ FrostPi bundles the following production dependencies. Copyright remains with th
 | @lezer/lr | 1.4.10 | MIT | — |
 | @marijn/find-cluster-break | 1.0.3 | MIT | <https://code.haverbeke.berlin/marijn/find-cluster-break> |
 | @mermaid-js/parser | 1.2.0 | MIT | <https://github.com/mermaid-js/mermaid/tree/develop/packages/mermaid/parser/#readme> |
+| @shikijs/vscode-textmate | 10.0.2 | MIT | <https://github.com/shikijs/vscode-textmate#readme> |
 | @sveltejs/acorn-typescript | 1.0.11 | MIT | <https://github.com/sveltejs/acorn-typescript#readme> |
 | @swc/helpers | 0.5.23 | Apache-2.0 | <https://swc.rs> |
 | @types/d3 | 7.4.3 | MIT | <https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3> |
@@ -128,6 +129,7 @@ FrostPi bundles the following production dependencies. Copyright remains with th
 | esrap | 2.2.13 | MIT | <https://github.com/sveltejs/esrap#readme> |
 | hachure-fill | 0.5.2 | MIT | <https://github.com/pshihn/hachure-fill#readme> |
 | highlight.js | 11.11.1 | BSD-3-Clause | <https://highlightjs.org/> |
+| html-to-image | 1.11.13 | MIT | <https://github.com/bubkoo/html-to-image#readme> |
 | iconv-lite | 0.6.3 | MIT | <https://github.com/ashtuchkin/iconv-lite> |
 | import-meta-resolve | 4.2.0 | MIT | <https://github.com/wooorm/import-meta-resolve#readme> |
 | inline-style-parser | 0.2.7 | MIT | <https://github.com/remarkablemark/inline-style-parser#readme> |
@@ -167,6 +169,7 @@ FrostPi bundles the following production dependencies. Copyright remains with th
 | tslib | 2.8.1 | 0BSD | <https://www.typescriptlang.org/> |
 | uc.micro | 2.1.0 | MIT | <https://github.com/markdown-it/uc.micro#readme> |
 | uuid | 14.0.1 | MIT | <https://github.com/uuidjs/uuid#readme> |
+| vscode-oniguruma | 2.0.1 | MIT | <https://github.com/microsoft/vscode-oniguruma#readme> |
 | w3c-keyname | 2.2.8 | MIT | <https://github.com/marijnh/w3c-keyname#readme> |
 | zimmerframe | 1.1.4 | MIT | <https://github.com/sveltejs/zimmerframe#readme> |
 | zod | 4.4.3 | MIT | <https://zod.dev> |

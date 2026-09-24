@@ -181,6 +181,12 @@ const payloadSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("checkPiIntegration"), sessionId: z.string().min(1).max(128) }),
   z.object({ type: z.literal("readMcpServers"), sessionId: z.string().min(1).max(128) }),
   z.object({
+    type: z.literal("highlightCode"),
+    requestId: z.string().min(1).max(128),
+    lang: z.string().min(1).max(64),
+    code: z.string().max(500_000),
+  }),
+  z.object({
     type: z.literal("setMcpServerEnabled"),
     sessionId: z.string().min(1).max(128),
     server: z.string().min(1).max(256),

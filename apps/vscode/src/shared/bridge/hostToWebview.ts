@@ -86,6 +86,7 @@ export type HostToWebviewPayload =
       servers: McpServerView[];
       /** Set when a config file exists but could not be read or parsed. */
       warning?: string;
-    };
+    }
+  | { type: "highlightCodeResult"; requestId: string; html: string | null };
 
 export type HostToWebviewMessage = HostToWebviewPayload & { bridgeVersion: string };

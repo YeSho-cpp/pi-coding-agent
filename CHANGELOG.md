@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.13] - 2026-09-24
+
+### Changed
+
+- **Inline code chips sit tighter in prose.** The chip introduced in `bed10c4` used a fixed
+  `2px 6px` padding with a 6px radius, which wrapped short identifiers like `dataDir` in tall
+  pills next to Copilot Chat's flatter chips. Padding is proportional again (`.1em .35em`), the
+  radius drops to 3px, the tinted fill from 14% to 10%, and chips sit 1px apart instead of 2px.
+- **Fence chrome tightened.** The language strip is 24px (was 26) and its label now starts on the
+  code column (16px left padding, matching the body — it was misaligned by 2px), the block radius
+  follows the same 6px as the rest of the surfaces (was 8px), and the code area's vertical padding
+  is symmetric.
+
+## [1.1.12] - 2026-09-24
+
+### Changed
+
+- **Code fences are tokenized the way the editor does.** Chat code blocks still get their
+  instant highlight.js paint, then are upgraded in place by a TextMate pass that reads the
+  grammars from *your* VS Code installation — the same files the editor uses, discovered through
+  `vscode.env.appRoot` plus the user extension folders — with Oniguruma running on the extension
+  host (no webview CSP concerns) and grammar JSON parsed tolerantly. TextMate scopes are mapped
+  onto the stylesheet's existing highlight.js classes, so the palette is unchanged, and
+  identifiers the grammars leave unscoped — `sock->asyncFlag` in C, which VS Code itself only
+  colours through a language server's semantic tokens — are painted as variables, so members read
+  blue instead of plain white beside Copilot Chat's blocks. Unknown languages, missing grammars
+  and engine failures fall back to the existing highlight.js paint; diff fences keep their
+  dedicated renderer. Adds `vscode-oniguruma` and `@shikijs/vscode-textmate` (both MIT, listed in
+  THIRD_PARTY_NOTICES).
+
+### Fixed
+
+- Code comments in fences are no longer forced italic; the palette's own token rules decide.
+
 ## [1.1.11] - 2026-09-23
 
 ### Changed
