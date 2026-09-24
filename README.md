@@ -18,11 +18,11 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=yesho.pi-coding-agent-vscode"><img src="https://img.shields.io/visual-studio-marketplace/v/yesho.pi-coding-agent-vscode?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="Marketplace"></a>
   <img src="https://img.shields.io/badge/VS%20Code-1.99%2B-007ACC?style=flat-square&logo=visualstudiocode&logoColor=white" alt="VS Code">
   <img src="https://img.shields.io/github/license/YeSho-cpp/pi-coding-agent?style=flat-square" alt="License">
-  <a href="https://github.com/YeSho-cpp/pi-coding-agent/stargazers"><img src="https://img.shields.io/github/stars/YeSho-cpp/pi-coding-agent?style=flat-square&label=Stars&logo=github" alt="GitHub Stars"></a>
+  <a href="https://github.com/YeSho-cpp/pi-coding-agent"><img src="https://img.shields.io/github/stars/YeSho-cpp/pi-coding-agent?style=flat-square&label=Stars&logo=github" alt="GitHub Stars"></a>
 </p>
 
 <p align="center">
-  ⭐ <a href="https://github.com/YeSho-cpp/pi-coding-agent/stargazers"><b>Star the repository on GitHub</b></a> — it takes a second and helps others find the project.
+  ⭐ <a href="https://github.com/YeSho-cpp/pi-coding-agent"><b>Star the repository on GitHub</b></a> — it takes a second and helps others find the project.
 </p>
 
 <p align="center">
