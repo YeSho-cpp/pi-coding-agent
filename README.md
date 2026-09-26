@@ -34,10 +34,10 @@
 It does **not** replace the Pi CLI. The extension launches your installed `pi` and reuses `~/.pi/agent` (models, sessions, skills, settings).
 
 <p align="center">
-  <img src="assets/screenshots/pi-agent-ui.png" alt="Pi Coding Agent UI in VS Code" width="720">
+  <img src="assets/screenshots/chat-file-chips.png" alt="Pi Coding Agent chat in VS Code with file chips" width="720">
 </p>
 <p align="center">
-  <img src="assets/screenshots/welcome-session-list.png" alt="Pi welcome session list in VS Code" width="720">
+  <img src="assets/screenshots/aligned-code-fence.png" alt="Code fence rendering an aligned ASCII table in Pi chat" width="720">
 </p>
 
 ## VS Code adaptation (why this is an editor extension)
