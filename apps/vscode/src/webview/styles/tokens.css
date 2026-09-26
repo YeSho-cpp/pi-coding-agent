@@ -19,7 +19,10 @@
 
   /* ── 字体 ──────────────────────────────────────────────────────── */
   --font-ui: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
-  --font-mono: var(--vscode-editor-font-family, "SFMono-Regular", Consolas, monospace);
+  /* editor.fontFamily is injected verbatim; its per-family fallbacks die with it, so keep
+     an always-resolvable mono tail after the var — otherwise a font list with no installed
+     family (or a proportional one) silently breaks box-drawing alignment in code fences. */
+  --font-mono: var(--vscode-editor-font-family, "SF Mono"), Menlo, Monaco, Consolas, "Courier New", monospace;
   --font-size: var(--vscode-font-size, 13px);
   --font-size-ui: var(--vscode-font-size, 13px);
   --font-size-compact: calc(var(--font-size-ui) - 1px);

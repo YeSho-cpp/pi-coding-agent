@@ -169,7 +169,7 @@ const ALLOWED_FILE_BASENAMES = new Set([
   ".zshrc",
 ]);
 
-function fileBasename(path: string): string {
+export function fileBasename(path: string): string {
   const lastSlash = path.lastIndexOf("/");
   const lastBackslash = path.lastIndexOf("\\");
   return path.slice(Math.max(lastSlash, lastBackslash) + 1);

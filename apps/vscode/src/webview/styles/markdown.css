@@ -170,6 +170,36 @@
   color: var(--md-link);
   background: color-mix(in srgb, var(--md-link) 18%, var(--md-inline-code-bg));
 }
+/* File-link chips mirror the composer's context chip — same border, fill, radius,
+   14px artwork, and 10.5px mono label — minus the remove button, so a file reads
+   identically before and after send. The icon is injected by MarkdownHtml after
+   sanitization, same as code actions. */
+.markdown-body a.file-link > code {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  margin: 0 1px;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--frost-link) 28%, var(--frost-border-soft));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--frost-input-bg) 80%, var(--frost-surface));
+  color: var(--frost-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.markdown-body a.file-link:hover > code {
+  border-color: color-mix(in srgb, var(--frost-link) 55%, var(--frost-border-soft));
+}
+.markdown-body a.file-link code .file-chip-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
 
 /* ── Code blocks ───────────────────────────────────────────────────── */
 

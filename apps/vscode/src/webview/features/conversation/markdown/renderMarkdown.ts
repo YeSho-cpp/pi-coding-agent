@@ -5,7 +5,7 @@ import type StateBlock from "markdown-it/lib/rules_block/state_block.mjs";
 import imageRule from "markdown-it/lib/rules_inline/image.mjs";
 import type StateInline from "markdown-it/lib/rules_inline/state_inline.mjs";
 
-import { parseFileHref, parseFileReference, type FileReference } from "./fileReferences.js";
+import { fileBasename, parseFileHref, parseFileReference, type FileReference } from "./fileReferences.js";
 import { renderDiffHtml } from "../diffPresentation.js";
 
 const katexCache = new Map<string, string>();
@@ -227,6 +227,20 @@ function fileReferenceAttributes(reference: FileReference): string {
   ].join(" ");
 }
 
+/**
+ * File chips show just the final path segment (Copilot style). The raw
+ * reference — full path plus line suffix — stays in the tooltip, and
+ * `data-file-path` keeps driving the click, so nothing is lost.
+ */
+function fileChipLabel(content: string, reference: FileReference): string {
+  if (!/[\\/]/.test(reference.path)) return content;
+  const trimmed = content.trim();
+  const suffixStart = trimmed.startsWith(reference.path) ? reference.path.length : 0;
+  const name = fileBasename(reference.path.replace(/[\\/]+$/, ""));
+  if (!name) return content;
+  return `${name}${trimmed.slice(suffixStart)}`;
+}
+
 function applyImagePlugin(md: MarkdownIt): void {
   const validateLink = md.validateLink.bind(md);
   // markdown-it rejects file: destinations before rendering. Relax that check
@@ -259,8 +273,9 @@ function applyFileLinkPlugin(md: MarkdownIt): void {
   md.renderer.rules.code_inline = (tokens, idx) => {
     const content = tokens[idx]!.content;
     const reference = parseFileReference(content);
-    const code = `<code>${escapeHtml(content)}</code>`;
-    return reference ? `<a ${fileReferenceAttributes(reference)}>${code}</a>` : code;
+    if (!reference) return `<code>${escapeHtml(content)}</code>`;
+    const label = escapeHtml(fileChipLabel(content, reference));
+    return `<a ${fileReferenceAttributes(reference)} title="${escapeHtml(content.trim())}"><code>${label}</code></a>`;
   };
 
   md.renderer.rules.link_open = (tokens, idx, options, _env, renderer) => {

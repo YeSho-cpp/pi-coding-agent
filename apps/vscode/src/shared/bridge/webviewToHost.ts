@@ -187,6 +187,11 @@ const payloadSchema = z.discriminatedUnion("type", [
     code: z.string().max(500_000),
   }),
   z.object({
+    type: z.literal("fileIcon"),
+    requestId: z.string().min(1).max(128),
+    path: z.string().min(1).max(4096),
+  }),
+  z.object({
     type: z.literal("setMcpServerEnabled"),
     sessionId: z.string().min(1).max(128),
     server: z.string().min(1).max(256),

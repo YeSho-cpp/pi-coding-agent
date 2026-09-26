@@ -8,6 +8,7 @@ import type { ComposerDraftView } from "../../shared/model/composerDraftModel.js
 import { captureActiveFileReference } from "../composer/mentions/captureActiveFile.js";
 import { captureActiveSelection } from "../composer/mentions/captureSelection.js";
 import { captureContextItems, contextId, pickContextItemsQuickPick } from "../composer/mentions/contextAttachPicker.js";
+import { fileIconDataUri } from "../composer/mentions/fileIcons.js";
 import { highlightFence } from "../highlight/codeHighlighter.js";
 import { formatFileMention } from "../composer/mentions/formatFileMention.js";
 import type { ContextAttachItemView } from "../../shared/model/contextAttachModel.js";
@@ -332,6 +333,14 @@ export class WebviewActionDispatcher {
       case "highlightCode": {
         const html = await highlightFence(message.lang, message.code);
         connection.post({ type: "highlightCodeResult", requestId: message.requestId, html });
+        return;
+      }
+      case "fileIcon": {
+        // Chips carry the parsed reference; icons resolve on file name and folder flag only.
+        const isDirectory = /[\\/]$/.test(message.path);
+        const name = message.path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+        const dataUri = name ? fileIconDataUri(name, isDirectory) : undefined;
+        connection.post({ type: "fileIconResult", requestId: message.requestId, dataUri: dataUri ?? null });
         return;
       }
       case "setMcpServerEnabled": {

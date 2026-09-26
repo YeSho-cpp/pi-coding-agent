@@ -173,13 +173,25 @@ describe("renderMarkdownHtml", () => {
     const root = document.createElement("div");
     root.innerHTML = html;
 
-    expect(root.querySelector("a.file-link")?.textContent).toBe("src/file.ts:42");
+    expect(root.querySelector("a.file-link")?.textContent).toBe("file.ts:42");
+    expect(root.querySelector("a.file-link")?.getAttribute("title")).toBe("src/file.ts:42");
     expect(root.querySelector("a.file-link")?.getAttribute("data-file-line")).toBe("42");
     expect([...root.querySelectorAll("code")].map((code) => code.textContent)).toEqual([
-      "src/file.ts:42",
+      "file.ts:42",
       "const value = 42",
     ]);
     expect(root.querySelectorAll("a.file-link")).toHaveLength(1);
+  });
+
+  it("shows only the file name in path chips and keeps the full path in the tooltip", () => {
+    const html = renderMarkdownHtml("`/Users/yesho/Code/HPN/nccl-log-collector/sync.go`");
+    const root = document.createElement("div");
+    root.innerHTML = html;
+    const link = root.querySelector("a.file-link");
+
+    expect(link?.textContent).toBe("sync.go");
+    expect(link?.getAttribute("title")).toBe("/Users/yesho/Code/HPN/nccl-log-collector/sync.go");
+    expect(link?.getAttribute("data-file-path")).toBe("/Users/yesho/Code/HPN/nccl-log-collector/sync.go");
   });
 
   it("renders Markdown images as inert sanitized placeholders", () => {

@@ -73,6 +73,21 @@ describe("Webview bridge validation", () => {
     }).success).toBe(false);
   });
 
+  it("accepts bounded file-icon requests", () => {
+    expect(webviewToHostSchema.safeParse({
+      bridgeVersion: BRIDGE_VERSION,
+      type: "fileIcon",
+      requestId: "icon-1",
+      path: "/Users/yesho/Code/HPN/nccl-log-collector/sync.go",
+    }).success).toBe(true);
+    expect(webviewToHostSchema.safeParse({
+      bridgeVersion: BRIDGE_VERSION,
+      type: "fileIcon",
+      requestId: "icon-1",
+      path: "x".repeat(4097),
+    }).success).toBe(false);
+  });
+
   it("accepts bounded session-tree actions and rejects malformed fields", () => {
     expect(webviewToHostSchema.safeParse({
       bridgeVersion: BRIDGE_VERSION,

@@ -5,6 +5,7 @@ import type { SessionViewModel } from "$shared/model/sessionViewModel";
 
 import { applyComposerSeed } from "../features/composer/composerSeedClient";
 import { deliverHighlightedCode } from "../features/conversation/markdown/highlightClient";
+import { deliverFileIcon } from "../features/conversation/markdown/fileIconClient";
 import { applyHostDraft, insertDraftText, setDraftText } from "../features/composer/composerDraftSync";
 import { addContextChips } from "../features/composer/contextAttachStore.svelte";
 import { applyContextAsFileMention } from "../features/composer/contextMention";
@@ -120,6 +121,9 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
     }
     case "highlightCodeResult":
       deliverHighlightedCode(message.requestId, message.html);
+      break;
+    case "fileIconResult":
+      deliverFileIcon(message.requestId, message.dataUri);
       break;
   }
 }

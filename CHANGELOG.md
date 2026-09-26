@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.14] - 2026-09-26
+
+### Fixed
+
+- **Code fences keep box-drawing lines aligned.** The fence font was
+  `var(--vscode-editor-font-family, …)` — VS Code injects `editor.fontFamily` verbatim, so the
+  fallbacks behind the `var()` never applied, and a font list with no installed family (or a
+  proportional one) silently broke ASCII-art tables: Latin fell back to a proportional font,
+  `│ ─ ┌` to a full-width CJK fallback, and columns drifted by row (measured spread: 280px).
+  `--font-mono` now keeps an always-resolvable mono tail (`Menlo, Monaco, Consolas, …`) after
+  the user's font, matching what VS Code itself does for chat code via `--monaco-monospace-font`.
+- **File chips show the file name, not the whole path.** A message that starts with an attached
+  `@file` used to render its chip as the full absolute path. Inline-code file references now
+  display just the final segment (line suffix kept — `sync.go`, `file.ts:42`), with the raw
+  path in the hover tooltip; clicking still opens via the parsed `data-file-path`, and copied
+  message text keeps the original full path. Each chip also gets the active icon-theme
+  artwork in front of the label — the same lookup the composer chips use, resolved lazily
+  through the host — and the chip itself wears the composer's context-chip chrome (border,
+  fill, 8px radius, 24px pill, 10.5px mono label) minus the remove button, so a file reads
+  identically before and after send.
+
 ## [1.1.13] - 2026-09-24
 
 ### Changed

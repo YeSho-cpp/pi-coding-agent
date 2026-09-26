@@ -3,6 +3,7 @@
   import { ensureKatex, isKatexReady, renderMarkdownHtml } from "./renderMarkdown";
   import { mountMarkdownImages } from "./mountMarkdownImages";
   import { requestHighlightedCode } from "./highlightClient";
+  import { requestFileIcon } from "./fileIconClient";
 
   let { content }: { content: string } = $props();
 
@@ -61,6 +62,26 @@
         if (!html || !element.isConnected || element.dataset.tm !== "pending") return;
         codeEl.innerHTML = html;
         element.dataset.tm = "done";
+      });
+    }
+    // File chips get the active icon-theme artwork in front of the label — the same
+    // lookup the composer chips use — resolved lazily through the host.
+    for (const anchor of root.querySelectorAll<HTMLElement>("a.file-link")) {
+      if (anchor.dataset.iconReady) continue;
+      const path = anchor.getAttribute("data-file-path");
+      const code = anchor.querySelector(":scope > code");
+      if (!path || !code) continue;
+      anchor.dataset.iconReady = "pending";
+      void requestFileIcon(path).then((dataUri) => {
+        if (!anchor.isConnected) return;
+        anchor.dataset.iconReady = "1";
+        if (!dataUri || code.querySelector(".file-chip-icon")) return;
+        const icon = document.createElement("img");
+        icon.className = "file-chip-icon";
+        icon.src = dataUri;
+        icon.alt = "";
+        icon.setAttribute("aria-hidden", "true");
+        code.insertBefore(icon, code.firstChild);
       });
     }
     // OpenChamber-style: every markdown table gets a wrap + copy (TSV/Markdown) affordance.
