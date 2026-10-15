@@ -2,12 +2,12 @@
  * Reads Pi's MCP configuration layers and derives what the chat panel shows.
  *
  * All of this is file state: the user layer (`~/.pi/agent/mcp.json`), the project override Pi
- * writes when a server is toggled (`<cwd>/.pi/mcp.json`, `disabled` only) and the adapter's
- * catalog cache (`~/.pi/agent/mcp-cache.json`).
+ * writes when a server is toggled (`<cwd>/.pi/mcp.json`) and the tool catalog cache
+ * (`~/.pi/agent/mcp-cache.json`).
  *
- * There is deliberately no connection status here. Pi only exposes that inside its own TUI
- * (`/mcp status`); outside it the best available signal is whether the catalog cache exists and
- * is fresh, which is what `McpCatalogState` reports instead of pretending to be live.
+ * There is deliberately no connection status here. Live connect/disconnect only happens inside
+ * Pi's own TUI (`/mcp`); outside it the best available signal is whether the catalog cache
+ * exists and is fresh, which is what `McpCatalogState` reports instead of pretending to be live.
  *
  * No `vscode` import: the derivation is pure so it can be tested directly.
  */
@@ -39,7 +39,7 @@ function serversOf(config: unknown): Record<string, unknown> | undefined {
   return record(root.mcpServers) ?? record(root["mcp-servers"]);
 }
 
-/** Matches the adapter's rule: `disabled: true` or the legacy `enabled: false`. */
+/** Accepts both spellings: Pi 1.x writes `enabled: false`; the old adapter wrote `disabled: true`. */
 export function isMcpServerDisabled(entry: unknown): boolean {
   const value = record(entry);
   if (!value) return false;
@@ -80,9 +80,9 @@ function catalogFor(name: string, cache: unknown, now: number): McpCatalogState 
 }
 
 /**
- * Project entries override the user layer: Pi's own writer records only `disabled` there, so a
- * server defined at user level can still be switched off for one workspace without copying its
- * definition or credentials.
+ * Project entries override the user layer: toggles write the flag there
+ * (`<cwd>/.pi/mcp.json`), so a server defined at user level can still be switched off for one
+ * workspace without copying its definition or credentials.
  */
 export function deriveMcpServers(input: DeriveMcpServersInput): McpServerView[] {
   const now = input.now ?? Date.now();
@@ -97,11 +97,12 @@ export function deriveMcpServers(input: DeriveMcpServersInput): McpServerView[] 
     const scope: McpServerView["scope"] = definedAtProject ? "project" : "user";
 
     const definition = userEntry ?? projectEntry ?? {};
-    // Pi's project layer only ever carries `disabled`, and its merge leaves the lower layer's flag
-    // alone when an entry is present but silent — so an entry that merely exists (empty, or
-    // holding only `command`) must not be read as "the project re-enabled this". Only an explicit
-    // `disabled` / `enabled` key overrides; `disabled: false` is exactly what Pi writes when the
-    // lower layer is itself disabled and the project layer turns it back on.
+    // The project layer carries the toggle flag (`enabled` on Pi 1.x, legacy `disabled`), and its
+    // merge leaves the lower layer's flag alone when an entry is present but silent — so an entry
+    // that merely exists (empty, or holding only `command`) must not be read as "the project
+    // re-enabled this". Only an explicit `disabled` / `enabled` key overrides; a false-y value is
+    // exactly what a toggle writes when the lower layer is itself disabled and the project layer
+    // turns it back on.
     const carriesFlag = projectEntry !== undefined && ("disabled" in projectEntry || "enabled" in projectEntry);
     const projectSaysDisabled = carriesFlag ? isMcpServerDisabled(projectEntry) : undefined;
     const enabled = projectSaysDisabled === undefined ? !isMcpServerDisabled(definition) : !projectSaysDisabled;

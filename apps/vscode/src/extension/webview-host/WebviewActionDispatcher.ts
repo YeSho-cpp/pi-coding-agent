@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import { isAbsolute, resolve } from "node:path";
 
 import * as vscode from "vscode";
 
@@ -336,8 +337,19 @@ export class WebviewActionDispatcher {
         return;
       }
       case "fileIcon": {
-        // Chips carry the parsed reference; icons resolve on file name and folder flag only.
-        const isDirectory = /[\\/]$/.test(message.path);
+        // Chips carry the parsed reference; folders usually end with a separator, but older
+        // messages were sent without one — stat the path so those still get folder artwork.
+        let isDirectory = /[\\/]$/.test(message.path);
+        if (!isDirectory) {
+          try {
+            const { stat } = await import("node:fs/promises");
+            const base = this.#displayedSession(connection)?.cwd ?? "";
+            const resolved = isAbsolute(message.path) ? message.path : resolve(base, message.path);
+            isDirectory = (await stat(resolved)).isDirectory();
+          } catch {
+            /* missing path: treat as a file */
+          }
+        }
         const name = message.path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
         const dataUri = name ? fileIconDataUri(name, isDirectory) : undefined;
         connection.post({ type: "fileIconResult", requestId: message.requestId, dataUri: dataUri ?? null });

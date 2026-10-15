@@ -46,6 +46,13 @@ const vscodeMock = vi.hoisted(() => {
     TextEditorRevealType: {
       InCenterIfOutsideViewport: 1,
     },
+    commands: {
+      executeCommand: vi.fn(() => Promise.resolve(undefined)),
+    },
+    FileType: {
+      File: 1,
+      Directory: 2,
+    },
   };
 });
 
@@ -61,6 +68,8 @@ vi.mock("vscode", () => ({
   workspace: vscodeMock.workspace,
   window: vscodeMock.window,
   TextEditorRevealType: vscodeMock.TextEditorRevealType,
+  commands: vscodeMock.commands,
+  FileType: vscodeMock.FileType,
 }));
 
 vi.mock("../../src/extension/fd/WorkspaceFileSearch.js", () => ({
@@ -83,7 +92,21 @@ describe("openReferencedLocation", () => {
     vscodeMock.document.lineAt.mockClear();
     vscodeMock.editor.revealRange.mockClear();
     vscodeMock.editor.selection = undefined;
+    vscodeMock.commands.executeCommand.mockClear();
     searchMock.search.mockReset();
+  });
+
+  it("reveals a directory reference in the Explorer instead of opening it as a document", async () => {
+    vscodeMock.workspace.fs.stat.mockResolvedValueOnce({ type: 2 });
+
+    await openReferencedLocation({ path: "/repo/pat-trace/" }, resolve("workspace"));
+
+    expect(vscodeMock.commands.executeCommand).toHaveBeenCalledWith(
+      "revealInExplorer",
+      expect.objectContaining({ fsPath: "/repo/pat-trace/" }),
+    );
+    expect(vscodeMock.workspace.openTextDocument).not.toHaveBeenCalled();
+    expect(searchMock.search).not.toHaveBeenCalled();
   });
 
   it("resolves relative references from the active session working directory", async () => {

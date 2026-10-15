@@ -77,9 +77,12 @@ function setDisabledFlag(entry: Record<string, unknown>, enabled: boolean): bool
     delete entry.enabled;
     return hadDisabled || hadEnabled;
   }
-  const already = entry.disabled === true && !("enabled" in entry);
-  entry.disabled = true;
-  delete entry.enabled;
+  // Pi 1.x reads only `enabled: false` (its check is `config.enabled !== false`); the old
+  // adapter's `disabled: true` spelling would be ignored, so write what Pi understands and
+  // drop the legacy key if a previous version left one behind.
+  const already = entry.enabled === false && !("disabled" in entry);
+  entry.enabled = false;
+  delete entry.disabled;
   return !already;
 }
 

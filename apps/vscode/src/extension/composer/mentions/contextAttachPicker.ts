@@ -123,7 +123,9 @@ export async function pickContextItemsQuickPick(
       kind: c.isDirectory ? "folder" : "file",
       path: c.absolutePath,
       label: c.name,
-      insertText: formatFileMention(c.absolutePath),
+      insertText: formatFileMention(
+        c.isDirectory && !c.absolutePath.endsWith("/") ? `${c.absolutePath}/` : c.absolutePath,
+      ),
       ...chipIcon(c.name, c.isDirectory),
     };
   };

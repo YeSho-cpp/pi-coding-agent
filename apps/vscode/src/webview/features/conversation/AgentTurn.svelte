@@ -11,14 +11,17 @@
   import SessionNotice from "./SessionNotice.svelte";
   import ThinkingActivity from "./ThinkingActivity.svelte";
   import ToolActivity from "./ToolActivity.svelte";
+  import TurnChangesStrip from "./TurnChangesStrip.svelte";
   import TurnTiming from "./TurnTiming.svelte";
   import UserMessage from "./UserMessage.svelte";
+  import { summarizeTurnChanges } from "./turnChanges";
 
   let { turn, session }: { turn: AgentTurnView; session: SessionViewModel } = $props();
   let traceOpen = $state(false);
 
   const plan = $derived(planTurnItems(turn, session.collapseTurnTrace));
   const summaryLabel = $derived(plan.mode === "collapsed" ? formatTraceSummaryLabel(plan.summary) : "");
+  const changes = $derived(summarizeTurnChanges(turn));
 
   $effect(() => {
     if (plan.mode !== "collapsed") traceOpen = false;
@@ -64,6 +67,9 @@
         {@render turnItemRow(item)}
       {/if}
     {/each}
+    {#if changes.length > 0}
+      <TurnChangesStrip files={changes} cwd={session.cwd} />
+    {/if}
   </div>
 </section>
 

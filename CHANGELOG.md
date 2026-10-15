@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.17] - 2026-10-14
+
+### Fixed
+
+- **Folder mentions chip like file mentions.** An `@folder` attached from the Quick Pick was
+  sent without a trailing slash, so the parser's extension whitelist rejected it and history
+  showed the raw absolute path as plain inline code. The picker now marks directories with a
+  trailing separator; the parser also accepts directory-shaped references (trailing separator,
+  or an absolute path whose final segment has no extension); the `fileIcon` bridge stats the
+  path so folder artwork resolves even for old messages; and clicking a directory reveals it
+  in the Explorer instead of failing to open it as a document.
+
+## [1.1.16] - 2026-10-14
+
+### Added
+
+- **Per-turn changed-files strip.** After a turn whose edit tool calls carry a path and a
+  display diff, the chat now shows a compact card — "已更改 N 个文件 +x -y" with one row per
+  file (icon-theme artwork, name, `+N -M` summed from the tool diffs). Clicking a row opens
+  the editor's two-pane diff (Git HEAD ↔ working tree) over the existing `openDiff` bridge;
+  brand-new files open with an empty left pane instead of a Git error dump. Bash-driven edits
+  have no tool diff and stay invisible, same as any other agent summary UI.
+
+## [1.1.15] - 2026-10-09
+
+### Fixed
+
+- **MCP panel switches speak Pi 1.x's spelling.** The panel wrote the adapter-era `disabled: true`
+  into `mcp.json` when turning a server off, but Pi 1.1.0's built-in MCP only reads
+  `enabled: false` (`config.enabled !== false`), so a server switched off in the panel still
+  started on the next session. The switch now writes `enabled: false` and drops any leftover
+  `disabled` key; the reader already accepted both spellings, and enabling still just removes
+  the flags.
+
 ## [1.1.14] - 2026-09-26
 
 ### Fixed

@@ -194,6 +194,16 @@ describe("renderMarkdownHtml", () => {
     expect(link?.getAttribute("data-file-path")).toBe("/Users/yesho/Code/HPN/nccl-log-collector/sync.go");
   });
 
+  it("chips extensionless absolute and trailing-slash directory references by name", () => {
+    const root = document.createElement("div");
+    root.innerHTML = renderMarkdownHtml("`/Users/yesho/Code/HPN/mccl/pat-trace` and `/Users/yesho/Code/HPN/mccl/pat-trace/`");
+    const links = [...root.querySelectorAll("a.file-link")];
+
+    expect(links.map((link) => link.textContent)).toEqual(["pat-trace", "pat-trace"]);
+    expect(links[0]?.getAttribute("data-file-path")).toBe("/Users/yesho/Code/HPN/mccl/pat-trace");
+    expect(links[1]?.getAttribute("data-file-path")).toBe("/Users/yesho/Code/HPN/mccl/pat-trace/");
+  });
+
   it("renders Markdown images as inert sanitized placeholders", () => {
     const html = renderMarkdownHtml('![diagram](./tmp/build.png "Build result")');
     const root = document.createElement("div");
@@ -284,6 +294,11 @@ describe("parseFileReference", () => {
     ["LICENSE", { path: "LICENSE" }],
     [".env.local", { path: ".env.local" }],
     ["paper.bib", { path: "paper.bib" }],
+    ["/Users/me/pat-trace/", { path: "/Users/me/pat-trace/", isDirectory: true }],
+    ["./assets/", { path: "./assets/", isDirectory: true }],
+    ["C:\\work\\src\\", { path: "C:\\work\\src\\", isDirectory: true }],
+    ["/Users/me/pat-trace", { path: "/Users/me/pat-trace" }],
+    ["/etc/hosts", { path: "/etc/hosts" }],
   ])("parses %s", (source, expected) => {
     expect(parseFileReference(source)).toEqual(expected);
   });
@@ -302,7 +317,7 @@ describe("parseFileReference", () => {
     "archive.zip",
     "photo.jpg",
     "src/file.unknown",
-    "/etc/hosts",
+    "pat-trace",
   ])(
     "does not classify %s as a file reference",
     (source) => {

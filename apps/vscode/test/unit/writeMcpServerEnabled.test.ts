@@ -52,8 +52,10 @@ describe("applyMcpServerEnabled — global switch", () => {
     await applyMcpServerEnabled(workDir, "feishu-mcp-pro", false, { PI_CODING_AGENT_DIR: agentDir });
 
     const raw = await readFile(join(agentDir, "mcp.json"), "utf8");
-    const parsed = JSON.parse(raw) as { mcpServers: Record<string, { disabled?: boolean; command?: string }> };
-    expect(parsed.mcpServers["feishu-mcp-pro"]!.disabled).toBe(true);
+    const parsed = JSON.parse(raw) as { mcpServers: Record<string, { enabled?: boolean; disabled?: boolean; command?: string }> };
+    // Pi 1.x reads only `enabled: false`; the adapter's legacy `disabled` key must not linger.
+    expect(parsed.mcpServers["feishu-mcp-pro"]!.enabled).toBe(false);
+    expect("disabled" in parsed.mcpServers["feishu-mcp-pro"]!).toBe(false);
     expect(parsed.mcpServers["other-server"]!.command).toBe("other");
     // Four-space indent and trailing newline survive the rewrite.
     expect(raw.startsWith('{\n    "mcpServers"')).toBe(true);
@@ -104,7 +106,7 @@ describe("applyMcpServerEnabled — global switch", () => {
 
     await applyMcpServerEnabled(workDir, "local", false, { PI_CODING_AGENT_DIR: agentDir });
     let parsed = JSON.parse(await readFile(project, "utf8")) as { mcpServers: Record<string, Record<string, unknown>> };
-    expect(parsed.mcpServers.local).toMatchObject({ command: "local-cmd", disabled: true });
+    expect(parsed.mcpServers.local).toMatchObject({ command: "local-cmd", enabled: false });
     // The user layer was never created: this server is not defined there.
     await expect(readFile(user, "utf8")).rejects.toThrow();
 

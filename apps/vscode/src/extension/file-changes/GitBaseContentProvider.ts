@@ -25,6 +25,10 @@ export class GitBaseContentProvider implements vscode.TextDocumentContentProvide
       return stdout;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // A file Git has never seen is a pure addition: the left pane reads empty, not an error dump.
+      if (/does not exist|exists on disk, but not in|Not a valid object name|unknown revision/i.test(message)) {
+        return "";
+      }
       return `Pi could not read the Git HEAD version of this file.\n\n${message}`;
     }
   }

@@ -3,6 +3,8 @@ export interface FileReference {
   line?: number;
   column?: number;
   endLine?: number;
+  /** The path ends with a separator: the reference names a directory. */
+  isDirectory?: boolean;
 }
 
 export interface ParseFileReferenceOptions {
@@ -219,14 +221,27 @@ export function parseFileReference(
   if (!path || /\s/.test(path)) return null;
   if (URI_SCHEME.test(path) && !WINDOWS_ABSOLUTE_PATH.test(path)) return null;
   if (!ABSOLUTE_PATH.test(path) && !EXPLICIT_RELATIVE_PATH.test(path) && !isRecognizableFilePath(path)) return null;
-  if (options.requireKnownExtension !== false && !hasAllowedFileSuffix(path)) return null;
+  // Trailing separators and extensionless absolute paths name folders (or extension-less
+  // files like a build directory) that agents reference constantly; the extension
+  // whitelist only has to keep guarding dotted relative tokens (`v1.2.3`, `photo.jpg`).
+  const isDirectory = /[\\/]$/.test(path);
+  const extensionlessAbsolute = !isDirectory && isExtensionlessAbsolutePath(path);
+  if (options.requireKnownExtension !== false && !hasAllowedFileSuffix(path) && !isDirectory && !extensionlessAbsolute) return null;
 
   return {
     path,
+    ...(isDirectory ? { isDirectory: true } : {}),
     ...(line === undefined ? {} : { line }),
     ...(column === undefined ? {} : { column }),
     ...(endLine === undefined ? {} : { endLine }),
   };
+}
+
+/** `/a/b/pat-trace` — absolute, final segment present, no dot anywhere in that segment. */
+function isExtensionlessAbsolutePath(path: string): boolean {
+  if (!ABSOLUTE_PATH.test(path)) return false;
+  const name = fileBasename(path.replace(/[\\/]+$/, ""));
+  return name.length > 0 && !name.includes(".");
 }
 
 export function parseFileHref(href: string): FileReference | null {

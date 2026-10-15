@@ -24,8 +24,9 @@ const FALLBACK_SEARCH_OPTIONS: WorkspaceFileSearchOptions = {
 
 /**
  * Opens a referenced file and applies its 1-based line/column/endLine.
- * When the path does not exist (bare filename, stale path), jumps to the best
- * fd match in the workspace; with no match, the original VS Code open error
+ * A directory reference reveals the folder in the Explorer instead of failing to open
+ * as a document. When the path does not exist (bare filename, stale path), jumps to the
+ * best fd match in the workspace; with no match, the original VS Code open error
  * surfaces unchanged.
  */
 export async function openReferencedLocation(
@@ -38,7 +39,12 @@ export async function openReferencedLocation(
     : resolve(basePath ?? workspacePath ?? "", reference.path);
   const uri = vscode.Uri.file(fsPath);
 
-  if (await pathExists(uri)) return openInEditor(uri, reference);
+  const stat = await statOrNull(uri);
+  if (stat && stat.type & vscode.FileType.Directory) {
+    await vscode.commands.executeCommand("revealInExplorer", uri);
+    return;
+  }
+  if (stat) return openInEditor(uri, reference);
 
   const match = await findWorkspaceFile(reference.path, basePath ?? workspacePath);
   if (match) return openInEditor(vscode.Uri.file(match), reference);
@@ -74,12 +80,11 @@ async function findWorkspaceFile(
   }
 }
 
-async function pathExists(uri: vscode.Uri): Promise<boolean> {
+async function statOrNull(uri: vscode.Uri): Promise<vscode.FileStat | undefined> {
   try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
+    return await vscode.workspace.fs.stat(uri);
   } catch {
-    return false;
+    return undefined;
   }
 }
 
