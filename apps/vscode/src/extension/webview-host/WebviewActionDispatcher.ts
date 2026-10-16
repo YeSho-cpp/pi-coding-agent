@@ -25,6 +25,7 @@ import { openReferencedLocation } from "../conversation/openReferencedLocation.j
 import { exportDiagnostics } from "../diagnostics/exportDiagnostics.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { openFileDiff } from "../file-changes/GitBaseContentProvider.js";
+import { openEditBaseDiff } from "../file-changes/EditBaseContentProvider.js";
 import type { ComposerExternalEditorOpenResult } from "../composer/ComposerExternalEditor.js";
 import type { SessionRegistry } from "../sessions/SessionRegistry.js";
 import type { ComposerDraftCache } from "./ComposerDraftCache.js";
@@ -301,9 +302,13 @@ export class WebviewActionDispatcher {
       case "openFile":
         await openReferencedLocation(message, this.#displayedSession(connection)?.cwd);
         return;
-      case "openDiff":
-        await openFileDiff(message.path);
+      case "openDiff": {
+        const opened = message.baseToolCallId
+          ? await openEditBaseDiff(message.path, message.baseToolCallId)
+          : false;
+        if (!opened) await openFileDiff(message.path);
         return;
+      }
       case "openExternal": {
         const uri = vscode.Uri.parse(message.url, true);
         if (uri.scheme !== "https" && uri.scheme !== "http") throw new Error("Only HTTP(S) links can be opened.");

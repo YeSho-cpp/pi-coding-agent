@@ -28,9 +28,9 @@
     return path.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith("\\\\");
   }
 
-  function openDiff(path: string): void {
-    const absolute = isAbsolutePath(path) ? path : `${cwd.replace(/[\\/]+$/, "")}/${path}`;
-    postToHost({ type: "openDiff", path: absolute });
+  function openDiff(file: TurnChangeFile): void {
+    const absolute = isAbsolutePath(file.path) ? file.path : `${cwd.replace(/[\\/]+$/, "")}/${file.path}`;
+    postToHost({ type: "openDiff", path: absolute, baseToolCallId: file.firstToolCallId });
   }
 </script>
 
@@ -44,7 +44,7 @@
   </div>
   <div class="turn-changes-list">
     {#each files as file (file.path)}
-      <button type="button" class="turn-change-row" title={file.path} onclick={() => openDiff(file.path)}>
+      <button type="button" class="turn-change-row" title={file.path} onclick={() => openDiff(file)}>
         {#if icons[file.path]}
           <img class="turn-change-icon" src={icons[file.path] ?? ""} alt="" aria-hidden="true" />
         {:else}

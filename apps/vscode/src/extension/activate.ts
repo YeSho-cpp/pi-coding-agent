@@ -4,6 +4,7 @@ import { readConfiguration } from "./configuration/readConfiguration.js";
 import { registerCommands } from "./commands/registerCommands.js";
 import { DiagnosticLogger } from "./diagnostics/DiagnosticLogger.js";
 import { GIT_BASE_SCHEME, GitBaseContentProvider } from "./file-changes/GitBaseContentProvider.js";
+import { EDIT_BASE_SCHEME, EditBaseContentProvider } from "./file-changes/EditBaseContentProvider.js";
 import { SessionStatusBar } from "./status-bar/SessionStatusBar.js";
 import { SessionRegistry } from "./sessions/SessionRegistry.js";
 import { PiUpdateNotifier } from "./updates/PiUpdateNotifier.js";
@@ -18,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const coordinator = new SessionWebviewCoordinator(registry, logger, context.extensionUri);
   const viewProvider = new PiViewProvider(context.extensionUri, coordinator);
   const gitBaseProvider = new GitBaseContentProvider();
+  const editBaseProvider = new EditBaseContentProvider();
   const statusBar = new SessionStatusBar(registry);
   const updates = new PiUpdateNotifier(context, logger);
   registryForDeactivate = registry;
@@ -28,7 +30,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     statusBar,
     updates,
     gitBaseProvider,
+    editBaseProvider,
     vscode.workspace.registerTextDocumentContentProvider(GIT_BASE_SCHEME, gitBaseProvider),
+    vscode.workspace.registerTextDocumentContentProvider(EDIT_BASE_SCHEME, editBaseProvider),
     vscode.window.registerWebviewViewProvider(PiViewProvider.viewType, viewProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     }),

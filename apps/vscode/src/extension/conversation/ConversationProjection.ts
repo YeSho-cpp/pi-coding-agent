@@ -41,7 +41,8 @@ import {
   emptyCacheAnalysis,
   isSignificantCacheMiss,
 } from "./cacheMissDetection.js";
-import { contentToBlocks, createToolView, extractText, extractToolDiff, isRecord, recordValue, stringValue } from "./messageAssembler.js";
+import { contentToBlocks, createToolView, extractText, extractToolDiff, isRecord, recordValue, stringValue, toolFilePath } from "./messageAssembler.js";
+import { recordEditBaseFromResult } from "../file-changes/editBaseSnapshots.js";
 
 export interface ActiveBranchEdge {
   branchPointId: string | null;
@@ -634,6 +635,11 @@ export class ConversationProjection {
       endedAt: Date.now(),
       timestamp: Date.now(),
     });
+    // The disk already holds this edit's output, so the pre-edit content can be
+    // reconstructed now; the strip's click opens it against the working tree.
+    if (!isError) {
+      void recordEditBaseFromResult(event.toolCallId, toolFilePath(recordValue(event.args)), event.result);
+    }
   }
 
   #liveToolTurnOrCreate(toolCallId: string): AgentTurnView | undefined {

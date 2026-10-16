@@ -57,7 +57,9 @@ describe("summarizeTurnChanges", () => {
       boundTool("t4", "/repo/empty.diff", "--- a\n+++ b\n@@ -1 +1 @@\n same"),
     ]);
 
-    expect(summarizeTurnChanges(turn)).toEqual([{ path: "/repo/a.go", added: 2, removed: 0 }]);
+    expect(summarizeTurnChanges(turn)).toEqual([
+      { path: "/repo/a.go", added: 2, removed: 0, firstToolCallId: "t1" },
+    ]);
   });
 
   it("aggregates repeated edits to the same file in first-seen order", () => {
@@ -68,8 +70,8 @@ describe("summarizeTurnChanges", () => {
     ]);
 
     expect(summarizeTurnChanges(turn)).toEqual([
-      { path: "/repo/a.go", added: 2, removed: 1 },
-      { path: "/repo/b.go", added: 0, removed: 1 },
+      { path: "/repo/a.go", added: 2, removed: 1, firstToolCallId: "t1" },
+      { path: "/repo/b.go", added: 0, removed: 1, firstToolCallId: "t2" },
     ]);
   });
 });

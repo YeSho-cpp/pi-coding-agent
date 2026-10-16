@@ -4,6 +4,8 @@ export interface TurnChangeFile {
   path: string;
   added: number;
   removed: number;
+  /** First edit of this file in the turn — its snapshot covers the whole turn's net change. */
+  firstToolCallId: string;
 }
 
 /** Line prefixes the diff renderer already classifies as add/remove (`!` is Pi's replace-add). */
@@ -37,7 +39,7 @@ export function summarizeTurnChanges(turn: AgentTurnView): TurnChangeFile[] {
       existing.added += added;
       existing.removed += removed;
     } else {
-      byPath.set(path, { path, added, removed });
+      byPath.set(path, { path, added, removed, firstToolCallId: item.tool.id });
     }
   }
   return [...byPath.values()];

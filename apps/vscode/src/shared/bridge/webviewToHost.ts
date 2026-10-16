@@ -175,7 +175,12 @@ const payloadSchema = z.discriminatedUnion("type", [
     mode: z.enum(["filesAndFolders", "folder", "files"]),
   }),
   openFileSchema,
-  z.object({ type: z.literal("openDiff"), path: z.string().min(1).max(32_768) }),
+  z.object({
+    type: z.literal("openDiff"),
+    path: z.string().min(1).max(32_768),
+    /** Snapshot of the file just before this tool's edit; falls back to Git HEAD when missing. */
+    baseToolCallId: z.string().min(1).max(128).optional(),
+  }),
   z.object({ type: z.literal("openExternal"), url: z.string().url().max(2_048) }),
   z.object({ type: z.literal("refreshCommands"), sessionId: z.string().min(1).max(128) }),
   z.object({ type: z.literal("checkPiIntegration"), sessionId: z.string().min(1).max(128) }),

@@ -107,7 +107,7 @@ function numericValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-function toolFilePath(args: Record<string, unknown>): string | undefined {
+export function toolFilePath(args: Record<string, unknown>): string | undefined {
   for (const key of ["path", "file_path", "filePath", "filename"]) {
     const value = args[key];
     if (typeof value === "string" && value.length > 0) return value;

@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.18] - 2026-10-14
+
+### Added
+
+- **Turn-scoped diffs from the change strip.** When a click lands, the host reconstructs the
+  file as it was just before that edit — Pi's tool result carries the unified patch, and at
+  result time the disk still holds the edit's output, so reverse-applying the patch (jsdiff)
+  recovers the exact base with no read-before-write race. The strip now opens
+  "AI edit ↔ current" from that snapshot; when the snapshot is gone (window reload, an old
+  turn) it falls back to the previous Git HEAD view. Snapshots are held in a 50-entry LRU
+  per live tool result; replayed history never records them.
+
+### Fixed
+
+- **Clear actually clears QuickPick chips.** An `@file` attached from the Quick Pick mirrors
+  its chip into a `__pending__` list that the composer strip also renders, but Clear only
+  emptied the session list — the row kept showing the mirrors, which read as "the button
+  does nothing". Clear now empties every mirror, matching what the per-chip `×` already did.
+
 ## [1.1.17] - 2026-10-14
 
 ### Fixed

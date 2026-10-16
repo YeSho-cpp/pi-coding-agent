@@ -36,8 +36,12 @@ export function removeContextChip(sessionId: string, id: string): void {
 
 export function clearContextChips(sessionId: string): void {
   contextAttachChips.update((map) => {
-    if (!map[sessionId]?.length) return map;
-    return { ...map, [sessionId]: [] };
+    // QuickPick attaches mirror the chip into `__pending__` and every other key, and the
+    // strip renders sessionId ∪ __pending__ — clearing one key alone leaves the row full.
+    // Per-chip × removes from every key, so Clear must empty them all to match its tooltip.
+    const empty: Record<string, ContextAttachItemView[]> = { [sessionId]: [] };
+    for (const key of Object.keys(map)) empty[key] = [];
+    return empty;
   });
 }
 
