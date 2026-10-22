@@ -9,6 +9,7 @@ import {
   clearEditBaseSnapshots,
   getEditBaseSnapshot,
   recordEditBaseFromResult,
+  resolveEditToolPath,
 } from "../../src/extension/file-changes/editBaseSnapshots";
 
 const OLD = Array.from({ length: 12 }, (_, index) => `line${index + 1}`).join("\n") + "\n";
@@ -19,6 +20,13 @@ function piStylePatch(): string {
   // cosmetic and parsePatch accepts plain ---/+++ headers too.
   return createTwoFilesPatch("f.txt", "f.txt", OLD, NEW, undefined, undefined, { context: 4 });
 }
+
+describe("resolveEditToolPath", () => {
+  it("resolves relative paths against the session cwd and keeps absolute ones", () => {
+    expect(resolveEditToolPath("sub/f.txt", "/session")).toBe("/session/sub/f.txt");
+    expect(resolveEditToolPath("/abs/f.txt", "/session")).toBe("/abs/f.txt");
+  });
+});
 
 describe("editBaseSnapshots", () => {
   let dir: string;
@@ -40,6 +48,15 @@ describe("editBaseSnapshots", () => {
     await recordEditBaseFromResult("call-1", file, { details: { patch: piStylePatch() } });
 
     expect(getEditBaseSnapshot("call-1")).toEqual({ path: file, base: OLD });
+  });
+
+  it("reconstructs from a Pi-style patch that carries the Index header", async () => {
+    await writeFile(file, NEW, "utf8");
+    const indexed = `Index: f.txt\n${"=".repeat(71)}\n${piStylePatch()}`;
+
+    await recordEditBaseFromResult("call-index", file, { details: { patch: indexed } });
+
+    expect(getEditBaseSnapshot("call-index")?.base).toBe(OLD);
   });
 
   it("ignores relative paths, failed patches, and results without a patch", async () => {

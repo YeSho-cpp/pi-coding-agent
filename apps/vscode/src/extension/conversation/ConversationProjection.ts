@@ -20,6 +20,7 @@ import type {
   SessionNoticeLevel,
   SessionNoticeView,
 } from "../../shared/model/conversationModel.js";
+import type { BoundToolCallView } from "../../shared/model/toolCallModel.js";
 import { validateProjectedImageAttachments } from "../attachments/normalizeImageAttachment.js";
 import {
   ConversationItemStore,
@@ -41,8 +42,7 @@ import {
   emptyCacheAnalysis,
   isSignificantCacheMiss,
 } from "./cacheMissDetection.js";
-import { contentToBlocks, createToolView, extractText, extractToolDiff, isRecord, recordValue, stringValue, toolFilePath } from "./messageAssembler.js";
-import { recordEditBaseFromResult } from "../file-changes/editBaseSnapshots.js";
+import { contentToBlocks, createToolView, extractText, extractToolDiff, isRecord, recordValue, stringValue } from "./messageAssembler.js";
 
 export interface ActiveBranchEdge {
   branchPointId: string | null;
@@ -106,6 +106,11 @@ export class ConversationProjection {
       queuedFollowUps: this.#queuedFollowUps,
       contentRevision: this.#contentRevision,
     };
+  }
+
+  /** Bound view for a tool call — args included, which tool_execution_end never repeats. */
+  toolCall(toolCallId: string): BoundToolCallView | undefined {
+    return this.#store.toolCall(toolCallId);
   }
 
   replaceEntries(entries: readonly RpcSessionEntry[], branchEdges: readonly ActiveBranchEdge[]): void {
@@ -635,11 +640,6 @@ export class ConversationProjection {
       endedAt: Date.now(),
       timestamp: Date.now(),
     });
-    // The disk already holds this edit's output, so the pre-edit content can be
-    // reconstructed now; the strip's click opens it against the working tree.
-    if (!isError) {
-      void recordEditBaseFromResult(event.toolCallId, toolFilePath(recordValue(event.args)), event.result);
-    }
   }
 
   #liveToolTurnOrCreate(toolCallId: string): AgentTurnView | undefined {

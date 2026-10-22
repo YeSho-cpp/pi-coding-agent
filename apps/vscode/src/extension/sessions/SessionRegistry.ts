@@ -19,6 +19,7 @@ import { showWindowsToast } from "../notifications/showWindowsToast.js";
 import { readPiSessionMetadata, sessionCwdInWorkspace, workspacePiSessionRoots, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
+import { isInsideDirectory, planNewSessionDirectories, type PlannedNewSessionDirectory } from "./NewSessionDirectories.js";
 import { SessionPersistence } from "./SessionPersistence.js";
 import {
   discoverSessionWorkingDirectories,
@@ -429,10 +430,11 @@ export class SessionRegistry implements vscode.Disposable {
 
   async createSession(ephemeral = false): Promise<string | undefined> {
     return this.#withSessionCreation(async () => {
-      const cwd = activeWorkspaceFolder()?.uri.fsPath;
-      if (!cwd) throw new Error("Open a workspace folder before creating a Pi session.");
-      const discovery = await this.#discoverWorkingDirectories(cwd);
-      const directory = await pickSessionWorkingDirectory(discovery.directories);
+      if (!vscode.workspace.workspaceFolders?.length) {
+        throw new Error("Open a workspace folder before creating a Pi session.");
+      }
+      const planned = await this.#planNewSessionDirectories();
+      const directory = await pickSessionWorkingDirectory(planned);
       if (!directory) return undefined;
       return this.#createSessionInDirectory(directory, ephemeral);
     });
@@ -440,8 +442,9 @@ export class SessionRegistry implements vscode.Disposable {
 
   async createSessionWithCustomArguments(): Promise<string | undefined> {
     return this.#withSessionCreation(async () => {
-      const cwd = activeWorkspaceFolder()?.uri.fsPath;
-      if (!cwd) throw new Error("Open a workspace folder before creating a Pi session.");
+      if (!vscode.workspace.workspaceFolders?.length) {
+        throw new Error("Open a workspace folder before creating a Pi session.");
+      }
       // Deliberately no validation or sanitization of these arguments anywhere in Pi Coding Agent;
       // the Pi CLI owns interpretation and failures surface via the startup-failure path.
       // See the custom-launch-arguments paragraph in session-lifecycle.SPEC.md.
@@ -454,8 +457,8 @@ export class SessionRegistry implements vscode.Disposable {
       if (raw === undefined) return undefined;
       const customArguments = parseLaunchArguments(raw);
       if (customArguments.length === 0 || customArguments.every((argument) => argument.length === 0)) return undefined;
-      const discovery = await this.#discoverWorkingDirectories(cwd);
-      const directory = await pickSessionWorkingDirectory(discovery.directories);
+      const planned = await this.#planNewSessionDirectories();
+      const directory = await pickSessionWorkingDirectory(planned);
       if (!directory) return undefined;
       return this.#createSessionInDirectory(directory, false, customArguments);
     });
@@ -861,6 +864,56 @@ export class SessionRegistry implements vscode.Disposable {
       });
   }
 
+  /**
+   * New-session candidates across every open folder: workspace roots (current folder first),
+   * project directories already used by sessions, then worktrees — the picker's three groups.
+   */
+  async #planNewSessionDirectories(): Promise<PlannedNewSessionDirectory[]> {
+    const folders = (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath);
+    const discoveries = await Promise.all(
+      folders.map(async (folderCwd) => ({
+        folderCwd,
+        directories: (await this.#discoverWorkingDirectories(folderCwd)).directories,
+      })),
+    );
+    const knownCwds = [
+      ...[...this.#records.values()].map((record) => record.cwd),
+      ...this.#catalogSessions.map((item) => item.cwd),
+      ...[...this.#workingDirectoriesByCwd.values()].map((directory) => directory.cwd),
+    ];
+    const planned = await planNewSessionDirectories({
+      folderCwds: folders,
+      discoveries,
+      knownCwds,
+      isDirectory: pathIsDirectory,
+    });
+    // Suggested row: the active editor's folder root leads the list so Enter keeps the
+    // old single-discovery behaviour.
+    const activeRoot = activeWorkspaceFolder()?.uri.fsPath;
+    if (!activeRoot) return planned;
+    const activeIndex = planned.findIndex(
+      (entry) => entry.kind === "workspace" && samePath(entry.directory.cwd, activeRoot),
+    );
+    if (activeIndex > 0) {
+      const next = [...planned];
+      const [active] = next.splice(activeIndex, 1);
+      next.unshift(active!);
+      return next;
+    }
+    return planned;
+  }
+
+  /** A surviving subdirectory of an open folder: sessions may live deeper than the folder root. */
+  async #projectWorkingDirectory(cwd: string): Promise<SessionWorkingDirectory | undefined> {
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      const root = folder.uri.fsPath;
+      if (samePath(root, cwd) || !isInsideDirectory(root, cwd)) continue;
+      if (!await pathIsDirectory(cwd)) continue;
+      return { cwd: resolve(cwd), workspaceFolderCwd: root, directoryName: basename(cwd), isCurrent: false };
+    }
+    return undefined;
+  }
+
   async #reconcilePersistedWorkingDirectories(): Promise<void> {
     const externalRecords = [...this.#records.values()].filter((record) => !isOpenWorkspaceFolder(record.cwd));
     if (!externalRecords.length) return;
@@ -869,7 +922,8 @@ export class SessionRegistry implements vscode.Disposable {
     const allowed = discoveries.flatMap((discovery) => discovery.directories);
     const stale: PersistedSessionRecord[] = [];
     for (const record of externalRecords) {
-      const directory = findSessionWorkingDirectory(allowed, record.cwd);
+      const directory = findSessionWorkingDirectory(allowed, record.cwd)
+        ?? await this.#projectWorkingDirectory(record.cwd);
       if (!directory) {
         stale.push(record);
         continue;
@@ -896,7 +950,8 @@ export class SessionRegistry implements vscode.Disposable {
     if (isOpenWorkspaceFolder(runtime.cwd)) return true;
     const discoveries = await this.#discoverOpenWorkspaceDirectories();
     const allowed = discoveries.flatMap((discovery) => discovery.directories);
-    const directory = findSessionWorkingDirectory(allowed, runtime.cwd);
+    const directory = findSessionWorkingDirectory(allowed, runtime.cwd)
+      ?? await this.#projectWorkingDirectory(runtime.cwd);
     if (directory) {
       this.#rememberWorkingDirectory(directory);
       runtime.refreshConfigurationState();
@@ -1262,28 +1317,74 @@ export class SessionRegistry implements vscode.Disposable {
   }
 }
 
+const NEW_SESSION_GROUP_LABEL: Record<PlannedNewSessionDirectory["kind"], string> = {
+  workspace: "工作区文件夹",
+  project: "已有项目目录",
+  worktree: "Git worktrees",
+};
+
 async function pickSessionWorkingDirectory(
-  directories: readonly SessionWorkingDirectory[],
+  planned: readonly PlannedNewSessionDirectory[],
 ): Promise<SessionWorkingDirectory | undefined> {
-  if (directories.length <= 1) return directories[0];
-  const items = directories.map((directory) => ({
-    label: directory.isCurrent
-      ? "$(folder-active) Current workspace"
-      : `$(git-branch) ${directory.branch ?? (directory.detached ? "Detached HEAD" : directory.directoryName)}`,
-    description: directory.branch && directory.isCurrent
-      ? `${directory.branch} · ${directory.directoryName}`
-      : directory.directoryName,
-    detail: directory.cwd,
-    directory,
-  }));
+  if (!planned.length) return undefined;
+  if (planned.length === 1) return planned[0]!.directory;
+  type Item = vscode.QuickPickItem & { directory?: SessionWorkingDirectory };
+  const items: Item[] = [];
+  let lastKind: PlannedNewSessionDirectory["kind"] | undefined;
+  for (const entry of planned) {
+    // Separator only *between* groups: the first row must stay a selectable entry.
+    if (lastKind !== undefined && entry.kind !== lastKind) {
+      items.push({ kind: vscode.QuickPickItemKind.Separator, label: NEW_SESSION_GROUP_LABEL[entry.kind] });
+    }
+    lastKind = entry.kind;
+    const { directory } = entry;
+    items.push({
+      label: newSessionItemLabel(entry),
+      description: newSessionItemDescription(entry),
+      detail: directory.cwd,
+      directory,
+    });
+  }
+  const title = planned.find((entry) => entry.kind === "workspace")?.directory.directoryName ?? "workspace";
   const selected = await vscode.window.showQuickPick(items, {
-    title: `New Pi session · ${directories[0]?.directoryName ?? "workspace"}`,
+    title: `New Pi session · ${title}`,
     placeHolder: "Choose where Pi should run",
     matchOnDescription: true,
     matchOnDetail: true,
     ignoreFocusOut: true,
   });
   return selected?.directory;
+}
+
+function newSessionItemLabel(entry: PlannedNewSessionDirectory): string {
+  const { directory } = entry;
+  if (entry.kind === "workspace") {
+    return directory.isCurrent
+      ? "$(folder-active) Current workspace"
+      : `$(folder) ${directory.directoryName}`;
+  }
+  if (entry.kind === "project") return `$(folder-opened) ${directory.directoryName}`;
+  return `$(git-branch) ${directory.branch ?? (directory.detached ? "Detached HEAD" : directory.directoryName)}`;
+}
+
+function newSessionItemDescription(entry: PlannedNewSessionDirectory): string {
+  const { directory } = entry;
+  if (entry.kind === "workspace") {
+    return directory.branch && directory.isCurrent
+      ? `${directory.branch} · ${directory.directoryName}`
+      : directory.directoryName;
+  }
+  if (entry.kind === "project") return basename(directory.workspaceFolderCwd);
+  return directory.directoryName;
+}
+
+async function pathIsDirectory(path: string): Promise<boolean> {
+  try {
+    const stat = await vscode.workspace.fs.stat(vscode.Uri.file(path));
+    return Boolean(stat.type & vscode.FileType.Directory);
+  } catch {
+    return false;
+  }
 }
 
 function isOpenWorkspaceFolder(cwd: string): boolean {

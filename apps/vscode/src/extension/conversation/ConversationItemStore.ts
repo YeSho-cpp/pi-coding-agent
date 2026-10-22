@@ -5,7 +5,7 @@ import type {
   AgentTurnView,
   ConversationItemView,
 } from "../../shared/model/conversationModel.js";
-import type { ToolCallView } from "../../shared/model/toolCallModel.js";
+import type { BoundToolCallView, ToolCallView } from "../../shared/model/toolCallModel.js";
 import { createToolView } from "./messageAssembler.js";
 
 /** A Pi-provided clue used only to correlate live and persisted representations. */
@@ -148,6 +148,13 @@ export class ConversationItemStore {
 
   hasTool(toolCallId: string): boolean {
     return this.#toolItems.has(toolCallId);
+  }
+
+  /** The bound view for a tool call, including args the end event never repeats. */
+  toolCall(toolCallId: string): BoundToolCallView | undefined {
+    const owner = this.#toolItems.get(toolCallId);
+    const current = owner ? this.turnItem(owner.location.turnId, owner.location.itemId) : undefined;
+    return current?.type === "tool" && current.tool.state === "bound" ? current.tool : undefined;
   }
 
   finalizeUnresolvedTools(): void {

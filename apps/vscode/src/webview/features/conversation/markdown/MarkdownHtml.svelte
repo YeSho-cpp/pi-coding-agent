@@ -4,6 +4,7 @@
   import { mountMarkdownImages } from "./mountMarkdownImages";
   import { requestHighlightedCode } from "./highlightClient";
   import { requestFileIcon } from "./fileIconClient";
+  import { tableToMarkdown } from "./tableMarkdown";
 
   let { content }: { content: string } = $props();
 
@@ -114,18 +115,6 @@
     }
     return () => images.destroy();
   });
-
-  function tableToMarkdown(table: Element): string {
-    const rows = [...table.querySelectorAll("tr")];
-    if (!rows.length) return "";
-    return rows
-      .map((row) =>
-        [...row.querySelectorAll("th,td")]
-          .map((cell) => (cell.textContent ?? "").trim().replaceAll("|", "\\|"))
-          .join(" | "),
-      )
-      .join("\n");
-  }
 
   function createCodeBlockActions(): HTMLDivElement {
     const actions = document.createElement("div");

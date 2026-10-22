@@ -25,6 +25,8 @@ import type { FrostUiConfiguration } from "../configuration/configurationTypes.j
 import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import { assistantCacheHitPercent } from "../conversation/cacheMissDetection.js";
 import { ConversationProjection } from "../conversation/ConversationProjection.js";
+import { recordValue, toolFilePath } from "../conversation/messageAssembler.js";
+import { recordEditBaseFromResult, resolveEditToolPath } from "../file-changes/editBaseSnapshots.js";
 import { redactDiagnosticText, type DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { ExtensionUiCoordinator } from "../extension-ui/ExtensionUiCoordinator.js";
 import { QuestionToolExtensionBridge } from "../question-tool/QuestionToolExtensionBridge.js";
@@ -774,6 +776,9 @@ export class SessionRuntime {
       if (event.type === "compaction_end" && typeof event.errorMessage === "string") {
         this.#conversation.appendNotice(event.errorMessage, "error");
       }
+      if (event.type === "tool_execution_end" && event.isError !== true && typeof event.toolCallId === "string") {
+        this.#recordEditBase(event);
+      }
     }
     if (event.type === "agent_start") {
       this.#abortRequested = false;
@@ -787,6 +792,20 @@ export class SessionRuntime {
       void this.#refreshAfterSettled();
     }
     if (event.type === "compaction_end") void this.#refreshAfterCompaction();
+  }
+
+  /**
+   * Snapshot the pre-edit file the moment Pi reports a successful edit: the disk already
+   * holds this edit's output, so reverse-applying the result's patch recovers the base.
+   * tool_execution_end never repeats args — fall back to the bound tool view — and the
+   * edit tool accepts relative paths, so resolve against this session's cwd.
+   */
+  #recordEditBase(event: RpcEvent): void {
+    const toolCallId = String(event.toolCallId);
+    const rawPath = toolFilePath(recordValue(event.args))
+      ?? toolFilePath(this.#conversation.toolCall(toolCallId)?.args ?? {});
+    const path = rawPath ? resolveEditToolPath(rawPath, this.cwd) : undefined;
+    void recordEditBaseFromResult(toolCallId, path, event.result);
   }
 
   async #handleQuestionUiRequest(request: RpcExtensionUiRequest): Promise<void> {

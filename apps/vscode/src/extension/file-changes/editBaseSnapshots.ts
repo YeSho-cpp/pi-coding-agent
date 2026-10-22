@@ -1,7 +1,17 @@
 import { readFile } from "node:fs/promises";
-import { isAbsolute } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, join, resolve } from "node:path";
 
 import { applyPatch, formatPatch, parsePatch, reversePatch } from "diff";
+
+/**
+ * Pi's edit tool accepts relative paths and resolves them against the session cwd —
+ * mirrors that so the snapshot reader can stat and reverse-patch the real file.
+ */
+export function resolveEditToolPath(path: string, cwd: string): string {
+  const expanded = path.startsWith("~") ? join(homedir(), path.slice(1)) : path;
+  return isAbsolute(expanded) ? expanded : resolve(cwd, expanded);
+}
 
 export interface EditBaseSnapshot {
   path: string;

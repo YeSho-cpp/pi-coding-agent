@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.22] - 2026-10-18
+
+### Fixed
+
+- **Copy table copies a real Markdown table.** The button joined the cell text with `|`
+  but never emitted the mandatory `---` delimiter row, so the paste rendered as plain
+  lines in every Markdown surface. The copy now produces a complete GFM table — header,
+  delimiter, body — with edge pipes, cells padded to the header width, and `|` inside
+  cells escaped.
+
+## [1.1.21] - 2026-10-18
+
+### Fixed
+
+- **Edit snapshots resolve relative paths.** Pi's edit tool accepts a relative `path` and
+  resolves it against the session cwd internally; the snapshot recorder treated only
+  absolute paths as recordable, so the common relative-path edit skipped the snapshot and
+  the change strip fell back to the Git HEAD view again. The recorder now mirrors Pi's
+  resolution (`~` expansion, then session cwd) and still recovers the args from the bound
+  tool view when the end event omits them.
+
+## [1.1.20] - 2026-10-14
+
+### Fixed
+
+- **Turn-scoped diffs actually capture the base.** Pi's `tool_execution_end` event carries
+  the result but never repeats the tool arguments — the snapshot recorder was reading args
+  straight off the end event, getting nothing, and every click fell back to the Git HEAD
+  view. The path is now recovered from the bound tool view (which already merges the args
+  from `tool_execution_start`), so clicking a change-strip row opens "AI edit ↔ current"
+  as designed. Untracked files included.
+
+## [1.1.19] - 2026-10-14
+
+### Added
+
+- **New-session picker lists every place you actually work.** "Choose where Pi should run"
+  previously offered only the active workspace folder's root plus its git worktrees. It now
+  shows three groups — every open workspace folder (the VS Code new-terminal picker style),
+  project directories already used by session records and Pi history (so a monorepo's
+  `projects/rccl`-style subfolders appear the way OpenChamber scopes projects), and the
+  worktrees. The active editor's folder root stays first, so pressing Enter behaves as
+  before. Sessions created in a subfolder no longer get garbage-collected at the next
+  startup: the record reconciliation accepts a surviving directory inside an open folder
+  instead of demanding an exact folder/worktree root match.
+
 ## [1.1.18] - 2026-10-14
 
 ### Added
