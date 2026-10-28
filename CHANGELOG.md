@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.24] - 2026-10-28
+
+### Changed
+
+- **MiMo model icon is a circle.** The MiMo model icon now uses a circular badge with the
+  MiMo mark on a dark ground, matching MiMo Desktop (mark at 50% optical size inside the
+  circle), instead of the previous square treatment.
+
 ## [1.1.23] - 2026-10-18
 
 ### Changed

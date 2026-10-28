@@ -14,7 +14,7 @@
 
   const entry = $derived(getModelIcon(name, provider));
   const iconSize = $derived(Math.round(size * 0.62));
-  // Xiaomi MiMo renders its own app icon instead of the LobeHub glyph.
+  // Xiaomi MiMo uses its own circular wordmark badge, not the LobeHub glyph.
   const usesAppIcon = $derived(entry.title === "XiaomiMiMo");
 </script>
 
@@ -60,11 +60,8 @@
   .model-brand-avatar svg {
     display: block;
   }
-  /* The app icon already carries its own rounded-square shape. */
-  .model-brand-avatar-app {
-    background: transparent;
-    border-radius: 22%;
-  }
+  /* mimo-model.png is a pre-rendered circular badge (dark ground, MiMo mark at 50%
+     optical size) matching MiMo Desktop's model list; the avatar's 50% clip is a no-op. */
   .model-brand-avatar-app img {
     display: block;
     width: 100%;
