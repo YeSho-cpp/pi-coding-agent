@@ -80,15 +80,15 @@ describe("renderMarkdownHtml", () => {
     expect(root.querySelector(".code-scroll .code-head")).toBeNull();
   });
 
-  it("labels untagged and indented blocks as txt so Copy still lands top-right", () => {
-    expect(renderMarkdownHtml("```\nplain\n```")).toContain('<span class="code-lang">txt</span>');
-    expect(renderMarkdownHtml("    indented code")).toContain('<span class="code-lang">txt</span>');
+  it("labels untagged and indented blocks as text so Copy still lands top-right", () => {
+    expect(renderMarkdownHtml("```\nplain\n```")).toContain('<span class="code-lang">text</span>');
+    expect(renderMarkdownHtml("    indented code")).toContain('<span class="code-lang">text</span>');
   });
 
   it("gives indented code blocks the same fence chrome", () => {
     const html = renderMarkdownHtml("    indented code");
     expect(html).toContain(
-      '<pre class="hljs"><span class="code-head"><span class="code-lang">txt</span></span>' +
+      '<pre class="hljs"><span class="code-head"><span class="code-lang">text</span></span>' +
         '<span class="code-scroll"><code>indented code',
     );
   });
@@ -108,8 +108,8 @@ describe("renderMarkdownHtml", () => {
     }
     expect(blocks.map((pre) => pre.querySelector(".code-lang")?.textContent)).toEqual([
       "ts",
-      "txt",
-      "txt",
+      "text",
+      "text",
     ]);
   });
 

@@ -53,7 +53,7 @@
       const element = pre as HTMLElement;
       if (element.classList.contains("language-diff")) continue;
       const lang = element.querySelector(":scope > .code-head > .code-lang")?.textContent?.trim().toLowerCase();
-      if (!lang || lang === "txt") continue;
+      if (!lang || lang === "txt" || lang === "text") continue;
       const codeEl = element.querySelector(":scope > .code-scroll > code");
       if (!codeEl) continue;
       const text = codeEl.textContent ?? "";

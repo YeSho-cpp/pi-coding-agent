@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.23] - 2026-10-18
+
+### Changed
+
+- **MiMo models wear the MiMo app icon.** The model picker previously drew the LobeHub
+  XiaomiMiMo glyph for `mimo*` models; it now uses the official MiMo Desktop app icon
+  (vendored from the desktop bundle), rendered full-bleed in the avatar slot.
+- **Plain-text fences are labelled `text`.** Untagged and indented code blocks showed a
+  `txt` language chip; the label is now `text` (wrap behaviour is unchanged — still
+  scroll), and the TextMate upgrade skips both `txt` and `text`.
+
 ## [1.1.22] - 2026-10-18
 
 ### Fixed

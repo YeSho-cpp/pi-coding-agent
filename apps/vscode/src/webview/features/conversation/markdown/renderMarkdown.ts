@@ -313,7 +313,7 @@ function renderFenceHtml(code: string, language: string): string {
       : escapeHtml(code);
   const wrapClass = WRAP_LANGUAGES.has(normalizedLanguage) ? " wrap" : "";
   const languageClass = isDiff ? " language-diff" : "";
-  const label = normalizedLanguage || "txt";
+  const label = normalizedLanguage || "text";
   const head = `<span class="code-head"><span class="code-lang">${escapeHtml(label)}</span></span>`;
   return `<pre class="hljs${wrapClass}${languageClass}">${head}<span class="code-scroll"><code>${highlighted}</code></span></pre>`;
 }
