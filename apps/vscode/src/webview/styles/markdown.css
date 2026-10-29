@@ -29,6 +29,40 @@
 
 /* ── Markdown syntax tokens ────────────────────────────────────────── */
 
+:root {
+  /* Syntax — Dark VS / Mermaid Dark (editor tokenColors). Global so tool cards share it. */
+  --md-syn-comment: #6a9955;
+  --md-syn-keyword: #569cd6;
+  --md-syn-string: #ce9178;
+  --md-syn-number: #b5cea8;
+  --md-syn-function: #dcdcaa;
+  --md-syn-variable: #9cdcfe;
+  --md-syn-type: #4ec9b0;
+  --md-syn-operator: #d4d4d4;
+  --md-syn-tag: #569cd6;
+  --md-syn-attr: #9cdcfe;
+  --md-syn-builtin: #4ec9b0;
+  --md-syn-add: #89d185;
+  --md-syn-del: #f48771;
+}
+
+body[data-vscode-theme-kind="vscode-light"],
+body.vscode-light {
+  --md-syn-comment: #008000;
+  --md-syn-keyword: #0000ff;
+  --md-syn-string: #a31515;
+  --md-syn-number: #098658;
+  --md-syn-function: #795e26;
+  --md-syn-variable: #001080;
+  --md-syn-type: #267f99;
+  --md-syn-operator: #3b3b3b;
+  --md-syn-tag: #800000;
+  --md-syn-attr: #e50000;
+  --md-syn-builtin: #267f99;
+  --md-syn-add: #1a7f37;
+  --md-syn-del: #cf222e;
+}
+
 .markdown-body {
   /* Prefer active VS Code theme (Mermaid Dark / Dark VS) over hardcoded warm black */
   --md-body: var(--vscode-foreground, #d4d4d4);
@@ -55,21 +89,6 @@
   --md-code-bg: var(--vscode-textCodeBlock-background, var(--vscode-editor-background, #1e1e1e));
   --md-code-border: var(--vscode-widget-border, #303031);
   --md-code-fg: var(--vscode-editor-foreground, #d4d4d4);
-
-  /* Syntax — Dark VS / Mermaid Dark (editor tokenColors) */
-  --md-syn-comment: #6a9955;
-  --md-syn-keyword: #569cd6;
-  --md-syn-string: #ce9178;
-  --md-syn-number: #b5cea8;
-  --md-syn-function: #dcdcaa;
-  --md-syn-variable: #9cdcfe;
-  --md-syn-type: #4ec9b0;
-  --md-syn-operator: #d4d4d4;
-  --md-syn-tag: #569cd6;
-  --md-syn-attr: #9cdcfe;
-  --md-syn-builtin: #4ec9b0;
-  --md-syn-add: #89d185;
-  --md-syn-del: #f48771;
 
   min-width: 0;
   overflow-wrap: anywhere;
@@ -125,7 +144,7 @@
 }
 .markdown-body a:hover {
   color: var(--md-link-hover);
-  border-bottom-color: var(--md-link-hover);
+  border-bottom: 1px dashed var(--md-link-hover);
   text-decoration: none;
 }
 
@@ -158,8 +177,9 @@
   margin: 0 1px;
   padding: .1em .35em;
   border: 0;
-  border-radius: 3px;
+  border-radius: 5px;
   background: color-mix(in srgb, var(--md-inline-code-fg) 10%, var(--md-inline-code-bg));
+  box-shadow: var(--frost-hairline-soft);
   color: var(--md-inline-code-fg);
   font-family: var(--font-mono);
   font-size: .9em;
@@ -209,8 +229,9 @@
   margin: 1.15em 0 1.3em;
   overflow: clip;
   background: var(--md-code-bg);
-  border: 1px solid var(--md-code-border);
-  border-radius: var(--radius-sm);
+  border: 0;
+  box-shadow: var(--frost-hairline);
+  border-radius: 10px;
   color: var(--md-code-fg);
   font-family: var(--font-mono);
   /* Follows the editor's code font, but a notch smaller: taking editor.fontSize raw
@@ -230,7 +251,7 @@
   min-height: 24px;
   /* Left padding matches the code body so the language label sits on the code column. */
   padding: 2px 6px 2px 16px;
-  border-bottom: 1px solid var(--md-code-border);
+  border-bottom: 1px solid var(--frost-stroke-soft);
 }
 .markdown-body pre .code-scroll {
   display: block;
@@ -344,7 +365,8 @@
 
 .frost-table-wrap {
   margin: .9em 0 1em;
-  border: 1px solid var(--md-table-border);
+  border: 0;
+  box-shadow: var(--frost-hairline);
   border-radius: 10px;
   overflow: hidden;
   background: var(--md-code-bg);
@@ -353,7 +375,7 @@
   display: flex;
   justify-content: flex-end;
   padding: 4px 6px;
-  border-bottom: 1px solid var(--md-table-border);
+  border-bottom: 1px solid var(--frost-stroke-soft);
   background: color-mix(in srgb, var(--md-code-bg) 92%, var(--md-code-fg));
 }
 .frost-table-copy {
@@ -385,7 +407,7 @@
 .markdown-body .frost-table-wrap th,
 .markdown-body .frost-table-wrap td {
   padding: 7px 10px;
-  border-bottom: 1px solid var(--md-table-border);
+  border-bottom: 1px solid var(--frost-stroke-soft);
   border-left: 0;
   border-right: 0;
   border-top: 0;
@@ -408,7 +430,8 @@
 .markdown-body th,
 .markdown-body td {
   padding: 6px 8px;
-  border: 1px solid var(--md-table-border);
+  border: 0;
+  border-bottom: 1px solid var(--frost-stroke-soft);
   color: var(--md-body);
 }
 .markdown-body th {

@@ -262,7 +262,7 @@
 .message-queued { opacity: 0.88; }
 .queued-bubble {
   position: relative;
-  border-style: dashed;
+  border: 1px dashed color-mix(in srgb, var(--frost-accent) 28%, var(--frost-border-soft));
   background: color-mix(in srgb, var(--frost-surface) 70%, transparent);
   box-shadow: none;
 }

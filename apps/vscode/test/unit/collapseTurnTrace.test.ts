@@ -19,7 +19,7 @@ describe("planTurnItems", () => {
 
     expect(plan).toMatchObject({
       mode: "collapsed",
-      stateLabel: "Worked",
+      stateLabel: "Completed",
       firstCollapsedItemId: "t1",
       anchorItemId: "final",
       anchorLabel: "Reply",
@@ -62,7 +62,7 @@ describe("planTurnItems", () => {
 
     expect(plan).toMatchObject({
       mode: "collapsed",
-      stateLabel: "Worked",
+      stateLabel: "Completed",
       anchorItemId: "final",
       summary: { steps: 3, errors: 2, durationLabel: "2s" },
     });
@@ -79,7 +79,7 @@ describe("planTurnItems", () => {
 
 describe("trace labels", () => {
   it("maps statuses and formats durations", () => {
-    expect(turnStateLabel("completed")).toBe("Worked");
+    expect(turnStateLabel("completed")).toBe("Completed");
     expect(turnStateLabel("aborted")).toBe("Stopped");
     expect(turnStateLabel("error")).toBe("Failed");
     expect(formatTurnDuration(0, 400)).toBe("<1s");

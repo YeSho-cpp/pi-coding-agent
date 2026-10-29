@@ -55,6 +55,26 @@ describe("ToolActivity sections", () => {
     expect(staticLabel(card)).toBe("Output");
   });
 
+  it("shows the file a bash read names as a chip, with its line range and highlighted output", () => {
+    const card = renderCard(bound({
+      name: "bash",
+      args: { command: "cd /w && sed -n '900,935p' pkg/main.go" },
+      output: "func main() {}",
+    }));
+
+    expect(card).toContain("tool-file-chip");
+    expect(card).toContain(">main.go<");
+    expect(card).toContain(">:900-935<");
+    expect(card).toContain("hljs-keyword");
+    expect(card).toContain("Open file");
+  });
+
+  it("keeps the command label for a bash call that is not a plain file read", () => {
+    const card = renderCard(bound({ name: "bash", args: { command: "ls | wc -l" }, output: "3" }));
+
+    expect(card).not.toContain("tool-file-chip");
+  });
+
   it("falls back to the arguments while a call has no result yet", () => {
     const card = renderCard(bound({ args: { command: "pnpm build" } }));
 
@@ -138,6 +158,7 @@ function preparing(rawArguments: string): PreparingToolCallView {
 }
 
 function bound(options: {
+  name?: string;
   status?: BoundToolCallView["status"];
   args?: Record<string, unknown>;
   output?: string;
@@ -153,7 +174,7 @@ function bound(options: {
   return {
     state: "bound",
     id: "tool-1",
-    name: "edit",
+    name: options.name ?? "edit",
     label: "a.ts",
     args: options.args ?? {},
     ...(options.output !== undefined ? { output: options.output } : {}),

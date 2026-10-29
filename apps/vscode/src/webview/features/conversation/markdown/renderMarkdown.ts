@@ -360,6 +360,11 @@ export function sanitizeSvg(svg: string): string {
   return DOMPurify.sanitize(svg, {
     USE_PROFILES: { svg: true, svgFilters: true, html: true },
     ADD_TAGS: ["foreignobject"],
+    // DOMPurify 3.x defaults HTML integration points to MathML's annotation-xml
+    // only, which condemns every HTML label inside mermaid's <foreignObject>.
+    // foreignObject is the spec's SVG→HTML integration point; its HTML children
+    // still pass the regular html allowlist (no scripts, no handlers).
+    HTML_INTEGRATION_POINTS: { "annotation-xml": true, foreignobject: true },
     ADD_ATTR: [
       "class",
       "style",
@@ -429,4 +434,40 @@ export function sanitizeMermaidSvg(svg: string): string | null {
     }
   }
   return root.outerHTML;
+}
+
+/**
+ * Preview HTML for ```html fences: agent-authored static markup. DOMPurify
+ * already drops scripts, event handlers and javascript: URLs; this config
+ * additionally forbids frames and form controls so the preview cannot
+ * navigate or submit anywhere. Styles and images stay (webview CSP still
+ * bounds what they may load).
+ */
+export function sanitizePreviewHtml(html: string): string {
+  // HTML parsers hoist a leading <style> into <head>, and DOMPurify serializes
+  // only <body> — wrapping first keeps style tags inside the fragment.
+  const wrapped = DOMPurify.sanitize(`<div data-frost-preview-root>${html}</div>`, {
+    ADD_TAGS: ["style"],
+    // DOMPurify only accepts an array here; the default set drops <style> bodies.
+    // Scripts are already gone via FORBID_TAGS, so an empty list is safe.
+    FORBID_CONTENTS: [],
+    FORBID_TAGS: [
+      "script",
+      "iframe",
+      "frame",
+      "object",
+      "embed",
+      "form",
+      "input",
+      "textarea",
+      "select",
+      "meta",
+      "link",
+      "base",
+    ],
+    FORBID_ATTR: ["srcset", "ping", "formaction"],
+  });
+  const document = new DOMParser().parseFromString(wrapped, "text/html");
+  const root = document.querySelector("[data-frost-preview-root]");
+  return root ? root.innerHTML : wrapped;
 }

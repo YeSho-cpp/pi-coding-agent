@@ -23,4 +23,6 @@ export interface WebviewPresentationView {
   piError?: string;
   /** VS Code extension package version (welcome header). */
   extensionVersion?: string;
+  /** `piAgent.session.barCollapsedByDefault`: whether the session bar starts hidden. */
+  sessionBarCollapsedByDefault?: boolean;
 }

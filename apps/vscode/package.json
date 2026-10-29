@@ -2,7 +2,7 @@
   "name": "pi-coding-agent-vscode",
   "displayName": "Pi Coding Agent UI",
   "description": "Visual VS Code UI for Pi Coding Agent. Uses your existing Pi CLI config, models, and sessions. Fork of FrostPi / Frost UI (AGPL-3.0).",
-  "version": "1.1.24",
+  "version": "1.1.32",
   "publisher": "yesho",
   "license": "AGPL-3.0-only",
   "private": false,
@@ -250,6 +250,12 @@
           "default": true,
           "scope": "resource",
           "description": "After a turn completes, collapse tools, reasoning, and interim replies into one summary above the final response."
+        },
+        "piAgent.session.barCollapsedByDefault": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Hide the session bar (session picker, new session, MCP, and actions) when a session opens. A toggle button at the top of the chat shows it again."
         },
         "piAgent.agent.permissionMode": {
           "type": "string",

@@ -56,17 +56,15 @@
         {#if copyText}
           <button type="button" aria-label="Copy user message" title="Copy raw message text" onclick={() => copyMessageText(message.blocks)}>
             <span class="codicon codicon-copy" aria-hidden="true"></span>
-            <span>Copy</span>
           </button>
           <button
             type="button"
             aria-label="Save user message as image"
-            title="保存为图片 (OpenChamber style DOM snapshot)"
+            title="保存为图片"
             disabled={saving}
             onclick={() => { void saveImage(); }}
           >
-            <span class="codicon codicon-device-camera" aria-hidden="true"></span>
-            <span>{saving ? "保存中…" : "保存为图片"}</span>
+            <span class={`codicon ${saving ? "codicon-loading codicon-modifier-spin" : "codicon-device-camera"}`} aria-hidden="true"></span>
           </button>
         {/if}
         {#if message.sourceEntryId}
@@ -80,7 +78,6 @@
             onclick={() => requestBranchHere(session, message)}
           >
             <span class="codicon codicon-history" aria-hidden="true"></span>
-            <span>从此处回退</span>
           </button>
           <button
             type="button"
@@ -89,8 +86,7 @@
             disabled={unavailable || $pendingForkEntryId !== null}
             onclick={() => requestMessageFork(session, message)}
           >
-            <span class="codicon codicon-git-branch" aria-hidden="true"></span>
-            <span>{pending ? "Forking…" : "Fork"}</span>
+            <span class={`codicon ${pending ? "codicon-loading codicon-modifier-spin" : "codicon-git-branch"}`} aria-hidden="true"></span>
           </button>
         {/if}
       </div>

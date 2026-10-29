@@ -12,7 +12,7 @@ export interface TurnTraceSummary {
   durationLabel: string | null;
 }
 
-export type TurnTraceStateLabel = "Worked" | "Stopped" | "Failed";
+export type TurnTraceStateLabel = "Completed" | "Stopped" | "Failed";
 
 export type TurnItemPlan =
   | { mode: "flat" }
@@ -78,13 +78,13 @@ function traceAnchorIndex(
 export function turnStateLabel(status: AgentTurnStatus): TurnTraceStateLabel {
   switch (status) {
     case "completed":
-      return "Worked";
+      return "Completed";
     case "aborted":
       return "Stopped";
     case "error":
       return "Failed";
     case "running":
-      return "Worked";
+      return "Completed";
   }
 }
 

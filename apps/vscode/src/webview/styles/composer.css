@@ -15,17 +15,18 @@
   width: 100%;
   max-width: 100%;
   background: var(--frost-input-bg);
-  border: 1px solid var(--frost-input-border);
-  border-radius: 11px;
-  box-shadow: 0 4px 18px rgba(0,0,0,.11);
-  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: var(--frost-elev-1);
+  transition: box-shadow var(--motion-normal) var(--ease-standard);
   overflow: visible;
 }
 .composer-box:focus-within {
-  border-color: var(--frost-focus);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--frost-focus) 25%, transparent), 0 6px 20px rgba(0,0,0,.14);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-focus) 70%, transparent), 0 0 0 3px color-mix(in srgb, var(--frost-focus) 16%, transparent), 0 4px 16px rgba(0,0,0,.08);
 }
-.composer-running { border-color: color-mix(in srgb, var(--frost-success) 38%, var(--frost-input-border)); }
+.composer-running {
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-success) 45%, var(--frost-stroke)), 0 4px 16px rgba(0,0,0,.08);
+}
 .composer-box textarea {
   display: block;
   width: 100%;
@@ -77,19 +78,23 @@
 .composer-expand-button:focus-visible { background: var(--frost-hover); color: var(--frost-text); }
 .composer-expand-button .codicon { font-size: 13px; }
 .send-button {
-  width: 27px;
-  height: 27px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   padding: 0;
-  border-radius: 7px;
+  border-radius: 50%;
   background: var(--frost-accent);
   color: var(--frost-accent-text);
   cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), opacity var(--motion-fast);
 }
+.send-button .codicon { font-size: 15px; }
 .send-button:hover:not(:disabled) { background: var(--frost-accent-hover); }
-.send-button:disabled { opacity: .35; cursor: default; }
+.send-button:active:not(:disabled) { transform: scale(.94); }
+.send-button:disabled { opacity: .3; cursor: default; }
 .stop-button { background: color-mix(in srgb, var(--frost-error) 82%, var(--frost-bg)); }
+.stop-button .codicon { font-size: 13px; }
 .composer-warning { display: flex; align-items: center; gap: 5px; margin: 0 3px 5px; color: var(--frost-warning); font-size: 10px; }
 .app-shell:has(.composer-expanded) { grid-template-rows: auto 0fr minmax(0, 1fr); }
 .panel-shell:has(.composer-expanded) { grid-template-rows: 0fr minmax(0, 1fr); }
@@ -179,8 +184,6 @@
   white-space: nowrap !important;
   border: 0 !important;
 }
-.composer-box { overflow: visible; }
-.composer-box:focus-within { box-shadow: 0 0 0 1px color-mix(in srgb, var(--frost-focus) 24%, transparent), 0 5px 18px rgba(0,0,0,.12); }
 .composer-toolbar { min-height: 35px; }
 .cm-tooltip.cm-tooltip-autocomplete {
   min-width: min(280px, calc(100vw - 20px));

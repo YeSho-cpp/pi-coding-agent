@@ -73,8 +73,8 @@
     width: 45px;
     animation: streaming-send-in var(--motion-fast) ease-out;
   }
-  .streaming-send-group { display: flex; width: 45px; height: 27px; overflow: hidden; border-radius: 7px; }
-  .streaming-send-group button { display: grid; place-items: center; height: 27px; padding: 0; background: var(--frost-accent); color: var(--frost-accent-text); cursor: pointer; }
+  .streaming-send-group { display: flex; width: 45px; height: 28px; overflow: hidden; border-radius: 14px; }
+  .streaming-send-group button { display: grid; place-items: center; height: 28px; transition: background var(--motion-fast) var(--ease-standard); padding: 0; background: var(--frost-accent); color: var(--frost-accent-text); cursor: pointer; }
   .streaming-send-group button:hover:not(:disabled) { background: var(--frost-accent-hover); }
   .streaming-send-group button:disabled { opacity: .35; cursor: default; }
   .streaming-send-main { width: 28px; }
@@ -87,10 +87,10 @@
     bottom: calc(100% + 7px);
     width: min(245px, calc(100vw - 20px));
     padding: 4px;
-    border: 1px solid var(--frost-border);
-    border-radius: 8px;
+    border: 0;
+    border-radius: 12px;
     background: var(--frost-surface-raised);
-    box-shadow: var(--frost-shadow);
+    box-shadow: var(--frost-elev-popover);
   }
   .streaming-send-panel button {
     width: 100%;

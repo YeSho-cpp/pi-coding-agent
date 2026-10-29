@@ -1,2 +1,19 @@
 @keyframes status-pulse { 0%,100% { opacity: .55; box-shadow: 0 0 0 2px transparent; } 50% { opacity: 1; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 12%, transparent); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(7px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes text-shimmer { 0% { background-position: 100% 0; } 66.667%, 100% { background-position: 0% 0; } }
+.shimmer-text {
+  background-image: linear-gradient(105deg, var(--frost-muted) 40%, var(--frost-text) 50%, var(--frost-muted) 60%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: text-shimmer 1.5s steps(48, end) 0.3s infinite;
+}
+/* Heights come from bits-ui, which measures the content when it opens or closes. */
+@keyframes collapsible-open { from { height: 0; opacity: 0; padding-block: 0; } to { height: var(--bits-collapsible-content-height); opacity: 1; } }
+@keyframes collapsible-close { from { height: var(--bits-collapsible-content-height); opacity: 1; } to { height: 0; opacity: 0; padding-block: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text { animation: none; background: none; -webkit-text-fill-color: currentColor; color: var(--frost-muted); }
+}

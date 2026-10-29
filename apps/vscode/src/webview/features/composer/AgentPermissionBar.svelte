@@ -87,24 +87,27 @@
     gap: 5px;
     height: 24px;
     padding: 0 9px;
-    border: 1px solid color-mix(in srgb, var(--frost-accent) 28%, var(--frost-border-soft));
+    border: 0;
     border-radius: 999px;
     background: color-mix(in srgb, var(--frost-accent) 10%, transparent);
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-accent) 34%, transparent);
     color: var(--frost-text);
     font-size: 10.5px;
+    font-weight: 500;
     cursor: pointer;
+    transition: background var(--motion-fast) var(--ease-standard);
   }
   .agent-permission-chip:hover { background: color-mix(in srgb, var(--frost-accent) 18%, transparent); }
   .agent-permission-chip.mode-auto {
-    border-color: color-mix(in srgb, var(--frost-warning) 40%, var(--frost-border));
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-warning) 45%, transparent);
     background: color-mix(in srgb, var(--frost-warning) 12%, transparent);
   }
   .agent-permission-chip.mode-restricted {
-    border-color: color-mix(in srgb, var(--frost-error) 35%, var(--frost-border));
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-error) 40%, transparent);
     background: color-mix(in srgb, var(--frost-error) 10%, transparent);
   }
   .agent-permission-chip.needs-input {
-    border-color: color-mix(in srgb, var(--frost-error) 50%, transparent);
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-error) 60%, transparent);
   }
   .agent-permission-chip :global(.codicon) { color: var(--frost-muted); font-size: 12px; }
   .agent-permission-chip.mode-auto :global(.codicon) { color: var(--frost-warning); }
@@ -115,9 +118,11 @@
     height: 24px;
     padding: 0 8px;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--frost-error) 40%, var(--frost-border));
+    border: 0;
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-error) 45%, transparent);
     background: color-mix(in srgb, var(--frost-error) 12%, transparent);
     color: var(--frost-error);
+    font-weight: 500;
     font-size: 10.5px;
     cursor: pointer;
   }

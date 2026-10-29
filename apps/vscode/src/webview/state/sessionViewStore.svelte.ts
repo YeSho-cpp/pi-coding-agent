@@ -13,9 +13,12 @@ export const EMPTY_PRESENTATION: WebviewPresentationView = {
   composerDraftAuthority: "webview",
   sidebarSessionExternalized: false,
   piAvailable: true,
+  sessionBarCollapsedByDefault: true,
 };
 
 export const presentationStore = writable<WebviewPresentationView>(EMPTY_PRESENTATION);
+/** The user's manual session-bar toggle; null follows `sessionBarCollapsedByDefault`. */
+export const sessionBarOverride = writable<boolean | null>(null);
 export const composerFocusTick = writable(0);
 /** True while the welcome list is opening a session — avoids flashing the welcome UI. */
 export const pendingSessionOpen = writable(false);

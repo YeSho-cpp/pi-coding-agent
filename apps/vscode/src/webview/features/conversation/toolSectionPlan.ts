@@ -1,5 +1,7 @@
 import type { BoundToolCallView, ToolCallView } from "$shared/model/toolCallModel";
 
+import { parseBashFileRead } from "./bashFileRead";
+
 /** A tool card shows one section at a time; every section is derived from the tool view. */
 export type ToolSectionId = "changes" | "input" | "output";
 
@@ -14,7 +16,7 @@ export interface ToolSectionPlan {
   /** Section to select on first expansion. */
   defaultSectionId: ToolSectionId | null;
   /** Set when the call names a file the user can open. */
-  openFile?: { path: string; line?: number };
+  openFile?: { path: string; line?: number; endLine?: number };
 }
 
 const SECTION_LABELS: Record<ToolSectionId, string> = {
@@ -35,11 +37,24 @@ export function planToolSections(tool: ToolCallView): ToolSectionPlan {
   }
 
   const available = availableSectionIds(tool);
-  const location = tool.recognized?.location;
+  const openFile = openFileOf(tool);
   return {
     sections: available.map(section),
     defaultSectionId: defaultSectionId(tool, available),
-    ...(location ? { openFile: { path: location.path, ...(location.line ? { line: location.line } : {}) } } : {}),
+    ...(openFile ? { openFile } : {}),
+  };
+}
+
+function openFileOf(tool: BoundToolCallView): ToolSectionPlan["openFile"] {
+  const location = tool.recognized?.location;
+  if (location) return { path: location.path, ...(location.line ? { line: location.line } : {}) };
+  const command = tool.name === "bash" ? tool.args.command : undefined;
+  const read = typeof command === "string" ? parseBashFileRead(command) : null;
+  if (!read) return undefined;
+  return {
+    path: read.path,
+    ...(read.startLine ? { line: read.startLine } : {}),
+    ...(read.endLine ? { endLine: read.endLine } : {}),
   };
 }
 

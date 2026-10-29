@@ -103,13 +103,13 @@
   z-index: 70;
   right: 0;
   bottom: calc(100% + 6px);
-  width: min(220px, calc(100vw - 18px));
-  padding: 10px;
-  border: 1px solid var(--frost-border);
-  border-radius: 8px;
+  width: min(240px, calc(100vw - 18px));
+  padding: 12px;
+  border: 0;
+  border-radius: 14px;
   background: var(--frost-surface-raised);
   color: var(--frost-text);
-  box-shadow: var(--frost-shadow);
+  box-shadow: var(--frost-elev-popover);
   font-size: 11px;
   line-height: 1.35;
 }
@@ -133,7 +133,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
-.usage-current { padding-bottom: 8px; border-bottom: 1px solid var(--frost-border-soft); }
+.usage-current { padding-bottom: 8px; border-bottom: 0.5px solid var(--frost-stroke); }
 .usage-current-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .usage-current-line > span { color: var(--frost-muted); font-size: 10.5px; }
 .usage-current-line > strong {
@@ -148,15 +148,15 @@
   margin-top: 6px;
   overflow: hidden;
   border-radius: 99px;
-  background: color-mix(in srgb, var(--frost-muted) 15%, transparent);
+  background: var(--frost-skeleton);
 }
-.usage-bar :global(span) { display: block; height: 100%; background: var(--frost-link); border-radius: inherit; }
+.usage-bar :global(span) { display: block; height: 100%; background: var(--frost-link); border-radius: inherit; transition: width var(--motion-slow) var(--ease-standard); }
 .usage-highlights {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 8px 0 7px;
-  border-bottom: 1px solid var(--frost-border-soft);
+  border-bottom: 0.5px solid var(--frost-stroke);
 }
 .usage-highlight { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .usage-highlight > span { color: var(--frost-muted); font-size: 10px; }
@@ -168,7 +168,7 @@
   font-variant-numeric: tabular-nums;
 }
 .usage-section { padding-top: 8px; }
-.usage-section + .usage-section { margin-top: 7px; border-top: 1px solid var(--frost-border-soft); }
+.usage-section + .usage-section { margin-top: 7px; border-top: 0.5px solid var(--frost-stroke); }
 .usage-section-title {
   display: block;
   margin-bottom: 5px;

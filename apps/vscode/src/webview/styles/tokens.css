@@ -16,6 +16,8 @@
   --radius-lg: 12px;
   --motion-fast: 120ms;
   --motion-normal: 170ms;
+  --motion-slow: 300ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ── 字体 ──────────────────────────────────────────────────────── */
   --font-ui: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
@@ -96,6 +98,20 @@
   /* Popup shadow: the body-portaled completion list sits over arbitrary host
      chrome, so it keeps the looser projection instead of the in-panel one. */
   --frost-shadow-popover: 0 12px 34px rgba(0, 0, 0, 0.28);
+
+  /* Hairlines: 0.5px box-shadow rings (no layout shift) tinted from the theme foreground. */
+  --frost-stroke-soft: color-mix(in srgb, var(--frost-text) 9%, transparent);
+  --frost-stroke: color-mix(in srgb, var(--frost-text) 14%, transparent);
+  --frost-stroke-strong: color-mix(in srgb, var(--frost-text) 22%, transparent);
+  --frost-hairline: 0 0 0 0.5px var(--frost-stroke);
+  --frost-hairline-soft: 0 0 0 0.5px var(--frost-stroke-soft);
+  --frost-elev-1: 0 0 0 0.5px var(--frost-stroke), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --frost-elev-popover: 0 0 0 0.5px var(--frost-stroke), 0 12px 32px rgba(0, 0, 0, 0.3);
+
+  /* Interaction overlays */
+  --frost-active-overlay: color-mix(in srgb, var(--frost-text) 14%, transparent);
+  --frost-danger-hover: color-mix(in srgb, var(--frost-error) 14%, transparent);
+  --frost-skeleton: color-mix(in srgb, var(--frost-text) 8%, transparent);
 }
 
 /* VS Code puts the theme kind on <body>, so the light overrides are declared there.
@@ -129,6 +145,16 @@ body.vscode-light {
   /* Light themes put editor.background ABOVE the sidebar, so the well would collide
      with the raised card. Nudge it down instead of reusing editor.background. */
   --frost-well: color-mix(in srgb, var(--vscode-editor-background, #ffffff) 94%, var(--frost-text));
+  --frost-stroke-soft: color-mix(in srgb, var(--frost-text) 8%, transparent);
+  --frost-stroke: color-mix(in srgb, var(--frost-text) 14%, transparent);
+  --frost-stroke-strong: color-mix(in srgb, var(--frost-text) 24%, transparent);
+  --frost-hairline: 0 0 0 0.5px var(--frost-stroke);
+  --frost-hairline-soft: 0 0 0 0.5px var(--frost-stroke-soft);
+  --frost-elev-1: 0 0 0 0.5px var(--frost-stroke), 0 4px 16px rgba(0, 0, 0, 0.05);
+  --frost-elev-popover: 0 0 0 0.5px var(--frost-stroke), 0 12px 32px rgba(0, 0, 0, 0.16);
+  --frost-active-overlay: color-mix(in srgb, var(--frost-text) 10%, transparent);
+  --frost-danger-hover: color-mix(in srgb, var(--frost-error) 12%, transparent);
+  --frost-skeleton: color-mix(in srgb, var(--frost-text) 6%, transparent);
 }
 
 .frostui-root {
@@ -195,36 +221,40 @@ body.vscode-light {
    which left the user's turn looking like just another grey block. */
 .user-bubble {
   max-width: 100%;
-  padding: 9px 12px;
+  padding: 9px 14px;
   background: color-mix(in srgb, var(--frost-accent) 10%, var(--frost-surface-raised));
-  border: 1px solid color-mix(in srgb, var(--frost-accent) 28%, var(--frost-border-soft));
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-radius: 18px 18px 5px 18px;
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--frost-accent) 38%, var(--frost-stroke)), 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 .message-actions {
-  min-height: 23px;
+  min-height: 28px;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  padding-top: 3px;
-  opacity: 0.55;
+  gap: 2px;
+  padding-top: 2px;
   transition: opacity var(--motion-fast) ease;
 }
-.message-user:hover .message-actions { opacity: 1; }
-.message-user:focus-within .message-actions { opacity: 1; }
 .message-actions button {
-  min-height: 20px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 1px 5px;
+  justify-content: center;
+  padding: 0;
   color: var(--frost-muted);
   background: transparent;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 10.5px;
 }
+.message-actions button .codicon { font-size: 15px; }
 .message-actions button:hover:not(:disabled) { color: var(--frost-text); background: var(--frost-hover); }
-.message-actions button:disabled { opacity: .5; cursor: default; }
+.message-actions button:disabled { opacity: .4; cursor: default; }
+/* Only the newest turn keeps its action rows on screen; earlier turns reveal a row on hover or focus. */
+@media (hover: hover) {
+  .agent-turn:has(~ .agent-turn) .message-actions { opacity: 0; }
+  .agent-turn:has(~ .agent-turn) :is(.message-user, .response-activity):is(:hover, :focus-within) .message-actions { opacity: 1; }
+}
 /* Timestamp chip shared by user and response action rows; each row positions it
    (user row leads the buttons, response row trails at the far end). */
 .action-row-timestamp {

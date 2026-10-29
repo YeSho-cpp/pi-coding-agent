@@ -19,18 +19,83 @@ let renderChain: Promise<void> = Promise.resolve();
 const svgCache = new Map<string, string>();
 const SVG_CACHE_LIMIT = 64;
 
-function detectTheme(): "dark" | "default" {
+function detectIsDark(): boolean {
   const kind = document.body?.getAttribute("data-vscode-theme-kind") ?? "";
-  if (kind.includes("high-contrast") || kind.includes("dark")) return "dark";
+  if (kind.includes("high-contrast") || kind.includes("dark")) return true;
   const bg = getComputedStyle(document.documentElement).getPropertyValue("--vscode-editor-background").trim();
   if (bg.startsWith("#") && bg.length >= 7) {
     const r = Number.parseInt(bg.slice(1, 3), 16);
     const g = Number.parseInt(bg.slice(3, 5), 16);
     const b = Number.parseInt(bg.slice(5, 7), 16);
     const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    return luminance < 0.45 ? "dark" : "default";
+    return luminance < 0.45;
   }
-  return "dark";
+  return true;
+}
+
+/**
+ * Mermaid Chart-flavoured palettes: soft blue on light themes, slate on dark
+ * ones — picked side by side against the stock themes. Re-initialized per
+ * render (renders are serialized by the queue) so a theme switch mid-session
+ * recolors the next diagram without a reload.
+ */
+function mermaidThemeConfig(): { key: "light" | "dark"; config: MermaidConfig } {
+  if (detectIsDark()) {
+    return {
+      key: "dark",
+      config: {
+        startOnLoad: false,
+        securityLevel: "strict",
+        theme: "base",
+        fontFamily: "var(--font-ui, sans-serif)",
+        themeVariables: {
+          dark: 1,
+          background: "#1e1e1e",
+          primaryColor: "#2a3a4a",
+          primaryTextColor: "#e5e7eb",
+          primaryBorderColor: "#5b7ea6",
+          secondaryColor: "#24352e",
+          tertiaryColor: "#3a3428",
+          lineColor: "#9aa7b5",
+          textColor: "#e5e7eb",
+          mainBkg: "#2a3a4a",
+          nodeBorder: "#5b7ea6",
+          clusterBkg: "#252525",
+          clusterBorder: "#4b5563",
+          titleColor: "#f3f4f6",
+          edgeLabelBackground: "#1e1e1e",
+          fontSize: "14px",
+        },
+      },
+    };
+  }
+  return {
+    key: "light",
+    config: {
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      fontFamily: "var(--font-ui, sans-serif)",
+      themeVariables: {
+        dark: 0,
+        background: "#ffffff",
+        primaryColor: "#eef4fb",
+        primaryTextColor: "#1f2937",
+        primaryBorderColor: "#8fb3e0",
+        secondaryColor: "#f0faf2",
+        tertiaryColor: "#fff8ec",
+        lineColor: "#64748b",
+        textColor: "#1f2937",
+        mainBkg: "#eef4fb",
+        nodeBorder: "#8fb3e0",
+        clusterBkg: "#f8fafc",
+        clusterBorder: "#cbd5e1",
+        titleColor: "#0f172a",
+        edgeLabelBackground: "#ffffff",
+        fontSize: "14px",
+      },
+    },
+  };
 }
 
 function mermaidScriptUrl(): string {
@@ -74,12 +139,7 @@ function loadMermaid(): Promise<MermaidApi> {
         reject(new Error("Mermaid loaded without global export"));
         return;
       }
-      window.mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "strict",
-        theme: detectTheme(),
-        fontFamily: "var(--font-ui, sans-serif)",
-      });
+      window.mermaid.initialize(mermaidThemeConfig().config);
       resolve(window.mermaid);
     };
     script.onerror = () => reject(new Error(`Failed to load Mermaid script: ${script.src}`));
@@ -94,12 +154,16 @@ function nextDiagramId(): string {
   return `frost-mermaid-${diagramSeq}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function cacheSvg(source: string, svg: string): void {
+function cacheKey(source: string): string {
+  return `${mermaidThemeConfig().key}\0${source}`;
+}
+
+function cacheSvg(key: string, svg: string): void {
   if (svgCache.size >= SVG_CACHE_LIMIT) {
     const first = svgCache.keys().next().value;
     if (first !== undefined) svgCache.delete(first);
   }
-  svgCache.set(source, svg);
+  svgCache.set(key, svg);
 }
 
 function enqueueRender<T>(task: () => Promise<T>): Promise<T> {
@@ -112,22 +176,26 @@ function enqueueRender<T>(task: () => Promise<T>): Promise<T> {
 }
 
 export function getCachedMermaidSvg(source: string): string | undefined {
-  return svgCache.get(source);
+  return svgCache.get(cacheKey(source));
 }
 
 export async function renderMermaidSvg(source: string): Promise<string> {
-  const cached = svgCache.get(source);
+  const key = cacheKey(source);
+  const cached = svgCache.get(key);
   if (cached !== undefined) return cached;
 
   return enqueueRender(async () => {
-    const again = svgCache.get(source);
+    const again = svgCache.get(key);
     if (again !== undefined) return again;
 
     const mermaid = await loadMermaid();
+    // Re-initialize inside the queue: renders are serialized, so the global
+    // config cannot interleave, and a mid-session theme switch takes effect.
+    mermaid.initialize(mermaidThemeConfig().config);
     const { svg } = await mermaid.render(nextDiagramId(), source);
     const cleaned = sanitizeMermaidSvg(svg);
     if (!cleaned) throw new Error("Diagram SVG failed sanitization");
-    cacheSvg(source, cleaned);
+    cacheSvg(key, cleaned);
     return cleaned;
   });
 }

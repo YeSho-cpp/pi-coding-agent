@@ -3,12 +3,20 @@
   import type { ToolActivityView } from "$shared/model/conversationModel";
 
   import { postToHost } from "../../bridge/vscodeBridge";
+  import { displayBashLabel } from "./bashLabel";
+  import { languageForPath } from "./codeLanguage";
   import { presentDiff } from "./diffPresentation";
+  import { requestFileIcon } from "./markdown/fileIconClient";
+  import ToolCode from "./ToolCode.svelte";
   import ToolOutputDialog from "./ToolOutputDialog.svelte";
+  import { stickToEnd } from "./stickToEnd";
   import { isToolSectionId, planToolSections, sectionToShow, type ToolSectionId } from "./toolSectionPlan";
 
-  let { activity }: { activity: ToolActivityView } = $props();
-  let open = $state(false);
+  /** `live` says the running turn settled on this call, so the card unfolds on its own. */
+  let { activity, live = false }: { activity: ToolActivityView; live?: boolean } = $props();
+  /** The reader's own toggle; until they make one the card follows `live`. */
+  let chosenOpen = $state<boolean | null>(null);
+  const open = $derived(chosenOpen ?? live);
   let dialogOpen = $state(false);
   let copiedOut = $state(false);
   let copiedIn = $state(false);
@@ -18,9 +26,31 @@
   const tool = $derived(activity.tool);
   const plan = $derived(planToolSections(tool));
   const activeSection = $derived(sectionToShow(plan, chosenSection));
+  /** File a `read` (or a bash `sed`/`cat`/`head`/`tail`) call shows, surfaced as a chip in the header. */
+  const fileRead = $derived(tool.state === "bound" && (tool.name === "read" || tool.name === "bash") ? plan.openFile : undefined);
+  const fileLang = $derived(fileRead ? languageForPath(fileRead.path) : null);
+  const fileChipName = $derived(fileRead ? fileRead.path.split(/[\\/]/).pop() || fileRead.path : "");
+  const fileChipRange = $derived(
+    fileRead?.line ? `:${fileRead.line}${fileRead.endLine && fileRead.endLine !== fileRead.line ? `-${fileRead.endLine}` : ""}` : "",
+  );
+  let fileIcon = $state<string | null>(null);
+
+  $effect(() => {
+    const path = fileRead?.path;
+    fileIcon = null;
+    if (!path) return;
+    let live = true;
+    void requestFileIcon(path).then((dataUri) => {
+      if (live) fileIcon = dataUri;
+    });
+    return () => {
+      live = false;
+    };
+  });
 
   const name = $derived(tool.state === "preparing" ? "Preparing tool call" : tool.name);
   const label = $derived(tool.state === "preparing" ? "Generating arguments…" : tool.label);
+  const shownLabel = $derived(tool.state !== "preparing" && tool.name === "bash" ? displayBashLabel(label) : label);
   const icon = $derived(tool.state === "preparing" ? "tools" : toolIcon(tool.name));
   const statusIcon = $derived(
     tool.status === "error"
@@ -53,6 +83,12 @@
     if (isToolSectionId(value)) chosenSection = value;
   }
 
+  function argLang(key: string): string | null {
+    if (tool.state !== "bound") return null;
+    const carriesFileText = tool.name === "write" ? key === "content" : tool.name === "edit" && /^(?:old|new)(?:Text|String)$/.test(key);
+    return carriesFileText && plan.openFile ? languageForPath(plan.openFile.path) : null;
+  }
+
   function copyToolOutput(): void {
     const text = tool.output?.trim() || label || "";
     if (!text) return;
@@ -71,11 +107,18 @@
   }
 </script>
 
-<Collapsible.Root bind:open class={`activity-row${tool.isError ? " activity-error" : ""}`}>
+<Collapsible.Root bind:open={() => open, (next) => { chosenOpen = next; }} class={`activity-row${tool.isError ? " activity-error" : ""}`}>
   <Collapsible.Trigger class="activity-trigger" onclick={latchSection}>
     <span class={`codicon codicon-${icon} activity-leading`} aria-hidden="true"></span>
     <span class="tool-activity-name">{name}</span>
-    <span class="tool-activity-label" title={label}>{label}</span>
+    {#if fileRead}
+      <span class="tool-file-chip" title={fileRead.path}>
+        {#if fileIcon}<img class="tool-file-icon" src={fileIcon} alt="" />{:else}<span class="codicon codicon-file tool-file-icon-fallback" aria-hidden="true"></span>{/if}
+        <span class="tool-file-name">{fileChipName}</span>{#if fileChipRange}<span class="tool-file-range">{fileChipRange}</span>{/if}
+      </span>
+    {:else}
+      <span class="tool-activity-label" title={label}>{shownLabel}</span>
+    {/if}
     {#if errorSummary && tool.state === "bound"}<span class="tool-error-summary" title={tool.output}>{errorSummary}</span>{/if}
     {#if tool.status === "running"}
       <span class="status-dot running-dot activity-status" title={statusLabel} aria-label={statusLabel}></span>
@@ -89,7 +132,7 @@
     <span class={`codicon codicon-chevron-${open ? "down" : "right"} activity-chevron`} aria-hidden="true"></span>
   </Collapsible.Trigger>
   <Collapsible.Content class="activity-content tool-activity-content">
-    <div class="tool-body">
+    <div class="tool-body" class:tool-card={plan.sections.length > 0}>
       {#if plan.sections.length > 1}
         {@const initialSection = plan.sections[0]!.id}
         <Tabs.Root value={activeSection ?? initialSection} onValueChange={selectSection}>
@@ -155,6 +198,7 @@
   command={label}
   inputText={(tool as { rawArguments?: string }).rawArguments || ""}
   outputText={tool.output || ""}
+  outputLang={fileLang}
   isError={!!tool.isError}
 />
 
@@ -174,7 +218,7 @@
 
 {#snippet sectionBody(sectionId: ToolSectionId | null)}
   {#if tool.state === "preparing"}
-    {#if sectionId === "input"}<pre class="tool-json">{tool.rawArguments}</pre>{/if}
+    {#if sectionId === "input"}<pre class="tool-json" use:stickToEnd={tool.status === "running"}>{tool.rawArguments}</pre>{/if}
   {:else}
     {@const diff = tool.recognized?.diff}
     {#if sectionId === "changes"}
@@ -191,7 +235,7 @@
           {@const rendered = renderArg(value)}
           {#if rendered.kind === "block"}
             <div class="tool-arg-key">{key}</div>
-            <pre class="tool-json">{rendered.text}</pre>
+            <pre class="tool-json"><ToolCode code={rendered.text} lang={argLang(key)} /></pre>
           {:else}
             <div class="tool-input-row">
               <span class="tool-input-key">{key}:</span>
@@ -201,7 +245,7 @@
         {/each}
       </div>
     {:else if sectionId === "output" && tool.output}
-      <pre class="tool-output">{tool.output}</pre>
+      <pre class="tool-output" use:stickToEnd={tool.status === "running"}><ToolCode code={tool.output} lang={fileLang} /></pre>
     {/if}
   {/if}
 {/snippet}
@@ -251,8 +295,10 @@
 }
 @keyframes running-breathe { 0%, 100% { opacity: .25; } 50% { opacity: .95; } }
 
+.tool-json::-webkit-scrollbar,
 .tool-output::-webkit-scrollbar,
 .tool-diff::-webkit-scrollbar { width: 9px; height: 9px; }
+.tool-json::-webkit-scrollbar-thumb,
 .tool-output::-webkit-scrollbar-thumb,
 .tool-diff::-webkit-scrollbar-thumb {
   background: var(--frost-scrollbar);
@@ -263,21 +309,53 @@
 /* Section switcher and file action share one row so the body costs the height of its
    largest section instead of the height of every section stacked. */
 .tool-body { min-width: 0; }
+/* Sections share one card: a label strip on top, the active section scrolling beneath it.
+   The edge is a real 0.5px border because the content wrapper clips outward shadows. */
+.tool-card {
+  overflow: hidden;
+  border: 0.5px solid var(--frost-stroke-soft);
+  border-radius: var(--radius-lg);
+  background: var(--frost-code-bg);
+}
+.tool-card .tool-body-bar {
+  margin-bottom: 0;
+  padding: 5px 6px;
+  border-bottom: 0.5px solid var(--frost-stroke-soft);
+  background: color-mix(in srgb, var(--frost-text) 3%, transparent);
+}
+.tool-card .tool-json,
+.tool-card .tool-output,
+.tool-card .tool-diff {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.tool-card .tool-input { padding: 8px 10px; }
+.tool-card .tool-input .tool-json { padding: 0; max-height: 240px; }
 .tool-body-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 7px; }
 .tool-tabs { display: flex; min-width: 0; }
-.tool-tabs :global([role="tablist"]) { display: flex; gap: 1px; min-width: 0; }
+.tool-tabs :global([role="tablist"]) {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--frost-skeleton);
+}
 .tool-tabs :global(button) {
-  padding: 2px 8px;
+  padding: 2px 9px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: var(--frost-muted);
   font: 11px var(--font-ui);
   cursor: pointer;
+  transition: color 160ms var(--ease-standard), background 160ms var(--ease-standard), box-shadow 160ms var(--ease-standard);
 }
-.tool-tabs :global(button:hover) { color: var(--frost-text); background: var(--frost-hover); }
+.tool-tabs :global(button:hover) { color: var(--frost-text); }
 .tool-tabs :global(button[data-state="active"]) {
-  background: color-mix(in srgb, var(--frost-surface) 90%, transparent);
+  background: var(--frost-surface-raised);
+  box-shadow: var(--frost-hairline), 0 1px 2px rgba(0, 0, 0, 0.12);
   color: var(--frost-text);
 }
 .tool-tabs :global(button:focus-visible) { outline: 1px solid var(--frost-focus); outline-offset: 1px; }
@@ -304,7 +382,7 @@
   overflow: auto;
   padding: 8px;
   background: var(--frost-code-bg);
-  border-radius: 5px;
+  border-radius: 8px;
   color: var(--frost-text);
   font: 11px/1.48 var(--font-mono);
   white-space: pre-wrap;
@@ -315,7 +393,7 @@
   overflow: auto;
   padding: 8px;
   background: var(--frost-code-bg);
-  border-radius: 5px;
+  border-radius: 8px;
   color: var(--frost-text);
   font: 11px/1.48 var(--font-mono);
   white-space: pre-wrap;
@@ -326,7 +404,7 @@
   overflow: auto;
   padding: 8px 0;
   background: var(--frost-code-bg);
-  border-radius: 5px;
+  border-radius: 8px;
   color: var(--frost-text);
   font: 11px/1.48 var(--font-mono);
   white-space: pre;
@@ -341,11 +419,13 @@
 .tool-diff-marker { display: inline-block; width: 1ch; text-align: center; }
 .tool-diff-line.added {
   color: var(--vscode-diffEditor-insertedTextForeground, var(--frost-text));
-  background: var(--vscode-diffEditor-insertedLineBackground, color-mix(in srgb, var(--frost-success) 14%, transparent));
+  background: var(--vscode-diffEditor-insertedLineBackground, color-mix(in srgb, var(--frost-success) 12%, transparent));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--frost-success) 75%, transparent);
 }
 .tool-diff-line.removed {
   color: var(--vscode-diffEditor-removedTextForeground, var(--frost-text));
-  background: var(--vscode-diffEditor-removedLineBackground, color-mix(in srgb, var(--frost-error) 14%, transparent));
+  background: var(--vscode-diffEditor-removedLineBackground, color-mix(in srgb, var(--frost-error) 12%, transparent));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--frost-error) 75%, transparent);
 }
 .tool-diff-line.added .tool-diff-emphasis {
   background: var(--vscode-diffEditor-insertedTextBackground, color-mix(in srgb, var(--frost-success) 32%, transparent));
@@ -363,18 +443,34 @@
 .tool-arg-key:first-child { margin-top: 0; }
 .tool-activity-name {
   flex: none;
-  color: color-mix(in srgb, var(--frost-text) 88%, var(--frost-muted));
-  font-size: 11px;
-  font-weight: 500;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 400;
 }
 .tool-activity-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--frost-muted);
-  font: 10.5px/1.35 var(--font-mono);
+  color: var(--frost-faint);
+  font: 11px/1.35 var(--font-mono);
 }
+.tool-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--frost-text) 14%, transparent);
+  border-radius: 6px;
+  color: var(--frost-muted);
+  font: 11px/18px var(--font-mono);
+}
+.tool-file-icon,
+.tool-file-icon-fallback { flex: none; width: 13px; height: 13px; font-size: 13px; }
+.tool-file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-file-range { flex: none; color: var(--frost-faint); }
 .tool-status-cancelled { color: var(--frost-warning); }
 .tool-error-summary {
   min-width: 0;

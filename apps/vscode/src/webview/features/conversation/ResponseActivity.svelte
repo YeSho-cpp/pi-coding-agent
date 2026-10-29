@@ -63,7 +63,6 @@
     <div class="message-actions response-actions">
       <button type="button" aria-label="Copy assistant response" title="Copy raw response text" onclick={() => copyMessageText(activity.blocks)}>
         <span class="codicon codicon-copy" aria-hidden="true"></span>
-        <span>Copy</span>
       </button>
       <button
         type="button"
@@ -72,8 +71,7 @@
         disabled={saving}
         onclick={() => { void saveImage(); }}
       >
-        <span class="codicon codicon-device-camera" aria-hidden="true"></span>
-        <span>{saving ? "Saving…" : "保存为图片"}</span>
+        <span class={`codicon ${saving ? "codicon-loading codicon-modifier-spin" : "codicon-device-camera"}`} aria-hidden="true"></span>
       </button>
       {#if session && entryId}
         <button
@@ -93,7 +91,6 @@
           })}
         >
           <span class="codicon codicon-history" aria-hidden="true"></span>
-          <span>从此处回退</span>
         </button>
       {/if}
       <button
@@ -103,7 +100,6 @@
         onclick={() => beginAnnotationReview(sessionId, copyText)}
       >
         <span class="codicon codicon-comment-discussion" aria-hidden="true"></span>
-        <span>Annotate</span>
       </button>
       {#if completedAtLabel}
         <time
@@ -117,9 +113,6 @@
 </div>
 
 <style>
-.response-activity:hover > .response-actions,
-.response-activity:focus-within > .response-actions,
-.response-activity > .response-actions { opacity: 1; }
 .message-footnote { margin-top: 6px; color: var(--frost-muted); font-size: 11px; font-style: italic; }
 .response-activity { min-width: 0; padding: 4px 2px 7px; }
 /* Sibling chrome crosses component instances; keep unscoped. */

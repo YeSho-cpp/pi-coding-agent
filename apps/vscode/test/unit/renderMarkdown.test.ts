@@ -6,6 +6,7 @@ import {
   ensureKatex,
   renderMarkdownHtml,
   sanitizeMermaidSvg,
+  sanitizePreviewHtml,
 } from "../../src/webview/features/conversation/markdown/renderMarkdown.js";
 
 describe("renderMarkdownHtml", () => {
@@ -253,6 +254,17 @@ describe("renderMarkdownHtml", () => {
     expect(root.querySelectorAll("code")).toHaveLength(2);
   });
 
+  it("chips a Dockerfile named by suffix, showing only its final segment", () => {
+    const path = "/Users/me/miks/docker/gburn-amd.Dockerfile";
+    const root = document.createElement("div");
+    root.innerHTML = renderMarkdownHtml(`\`${path}\``);
+    const link = root.querySelector("a.file-link");
+
+    expect(link?.getAttribute("data-file-path")).toBe(path);
+    expect(link?.querySelector("code")?.textContent).toBe("gburn-amd.Dockerfile");
+    expect(link?.getAttribute("title")).toBe(path);
+  });
+
   it("turns inline code with known text-file extensions and common base names into file links", () => {
     const html = renderMarkdownHtml("`Makefile:10` `LICENSE` `main.tex:15` `config.yaml` `src/utils.py`");
     const root = document.createElement("div");
@@ -299,6 +311,25 @@ describe("parseFileReference", () => {
     ["C:\\work\\src\\", { path: "C:\\work\\src\\", isDirectory: true }],
     ["/Users/me/pat-trace", { path: "/Users/me/pat-trace" }],
     ["/etc/hosts", { path: "/etc/hosts" }],
+    ["Containerfile", { path: "Containerfile" }],
+    ["docker/gburn-amd.Dockerfile", { path: "docker/gburn-amd.Dockerfile" }],
+    ["/Users/me/docker/gburn-amd.Dockerfile", { path: "/Users/me/docker/gburn-amd.Dockerfile" }],
+    ["docker/Dockerfile.prod:12", { path: "docker/Dockerfile.prod", line: 12 }],
+    ["Containerfile.dev", { path: "Containerfile.dev" }],
+    ["kernels/attn.cu", { path: "kernels/attn.cu" }],
+    ["include/attn.cuh:12", { path: "include/attn.cuh", line: 12 }],
+    ["proto/user.proto", { path: "proto/user.proto" }],
+    ["infra/main.tf", { path: "infra/main.tf" }],
+    ["cmake/FindMori.cmake", { path: "cmake/FindMori.cmake" }],
+    ["/etc/systemd/system/kubelet.service", { path: "/etc/systemd/system/kubelet.service" }],
+    ["deploy/job.sbatch", { path: "deploy/job.sbatch" }],
+    ["charts/app/templates/_helpers.tpl", { path: "charts/app/templates/_helpers.tpl" }],
+    ["data/train.jsonl", { path: "data/train.jsonl" }],
+    ["notebooks/eval.ipynb", { path: "notebooks/eval.ipynb" }],
+    ["lib/server.rb", { path: "lib/server.rb" }],
+    ["go.mod", { path: "go.mod" }],
+    ["go.sum", { path: "go.sum" }],
+    ["Jenkinsfile", { path: "Jenkinsfile" }],
   ])("parses %s", (source, expected) => {
     expect(parseFileReference(source)).toEqual(expected);
   });
@@ -318,6 +349,16 @@ describe("parseFileReference", () => {
     "photo.jpg",
     "src/file.unknown",
     "pat-trace",
+    "notdockerfile.dev",
+    "process.env",
+    "np.sum",
+    "np.diff",
+    "this.props",
+    "mock.patch",
+    "self.cmd",
+    "pyspark.ml",
+    "this.el",
+    "model.bin",
   ])(
     "does not classify %s as a file reference",
     (source) => {
@@ -347,8 +388,52 @@ describe("sanitizeMermaidSvg", () => {
     expect(cleaned).toContain("https://example.com/docs");
   });
 
+  it("keeps html labels inside foreignObject (mermaid node text)", () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject width="100" height="50">'
+      + '<div xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel">节点文字</span></div>'
+      + "</foreignObject></svg>";
+    const cleaned = sanitizeMermaidSvg(svg);
+
+    expect(cleaned).toContain("节点文字");
+    expect(cleaned).toContain("nodeLabel");
+  });
+
   it("fails closed on non-svg payload", () => {
     expect(sanitizeMermaidSvg("<div onclick=\"alert(1)\">x</div>")).toBeNull();
     expect(sanitizeMermaidSvg("")).toBeNull();
+  });
+});
+
+describe("sanitizePreviewHtml", () => {
+  it("keeps static markup, styles, and https images", () => {
+    const html = [
+      "<style>.card{color:red}</style>",
+      "<div class=\"card\" style=\"padding:4px\">hi</div>",
+      "<img src=\"https://example.com/a.png\" alt=\"a\">",
+    ].join("");
+    const cleaned = sanitizePreviewHtml(html);
+
+    expect(cleaned).toContain("class=\"card\"");
+    expect(cleaned).toContain(".card{color:red}");
+    expect(cleaned).toContain("https://example.com/a.png");
+  });
+
+  it("removes scripts, frames, and form controls", () => {
+    const html = [
+      "<script>alert(1)</script>",
+      "<iframe src=\"https://evil.example\"></iframe>",
+      "<form action=\"https://evil.example\"><input name=\"q\"></form>",
+      "<div onclick=\"alert(1)\">ok</div>",
+      "<a href=\"javascript:alert(1)\">x</a>",
+    ].join("");
+    const cleaned = sanitizePreviewHtml(html);
+
+    expect(cleaned).not.toContain("<script");
+    expect(cleaned).not.toContain("<iframe");
+    expect(cleaned).not.toContain("<form");
+    expect(cleaned).not.toContain("<input");
+    expect(cleaned).not.toContain("onclick");
+    expect(cleaned).not.toContain("javascript:");
+    expect(cleaned).toContain("ok");
   });
 });

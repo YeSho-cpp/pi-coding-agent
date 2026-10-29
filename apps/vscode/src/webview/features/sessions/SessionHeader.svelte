@@ -4,7 +4,7 @@
 
   import { postToHost } from "../../bridge/vscodeBridge";
   import type { McpServerView } from "$shared/model/mcpModel";
-  import { mcpServers } from "../../state/sessionViewStore.svelte";
+  import { mcpServers, presentationStore, sessionBarOverride } from "../../state/sessionViewStore.svelte";
   import { draftForHost } from "../composer/composerDraftSync";
   import IconButton from "../../primitives/IconButton.svelte";
   import StatusDot from "./StatusDot.svelte";
@@ -21,12 +21,20 @@
   let mcpOpen = $state(false);
   let mcpExpanded = $state<Record<string, boolean>>({});
   let mcpFilters = $state<Record<string, string>>({});
-  let hidden = $state(false);
+  const collapsedByDefault = $derived($presentationStore.sessionBarCollapsedByDefault ?? true);
+  const hidden = $derived($sessionBarOverride ?? collapsedByDefault);
+  let lastDefault: boolean | undefined;
   let titleInput = $state<HTMLInputElement | null>(null);
   let root = $state<HTMLElement | null>(null);
 
   const needsAttention = $derived(sessions.some((session) => session.requiresUserInput));
   const backgroundRuns = $derived(sessions.filter((session) => session.id !== active.id && session.status === "running").length);
+
+  $effect(() => {
+    const previous = lastDefault;
+    lastDefault = collapsedByDefault;
+    if (previous !== undefined && previous !== collapsedByDefault) sessionBarOverride.set(null);
+  });
 
   $effect(() => {
     if (editing) requestAnimationFrame(() => titleInput?.focus());
@@ -192,17 +200,18 @@
   editing = false;
 }} />
 
-<div class="session-header-slot">
+<div class="session-header-slot" class:collapsed={hidden}>
 {#if hidden}
   <button
     class="session-header-restore"
     class:attention={needsAttention}
     type="button"
     aria-label="Show session bar"
-    title={needsAttention ? "Show session bar — a session needs input" : "Show session bar"}
-    onclick={() => hidden = false}
+    title={(needsAttention ? "Show session bar — a session needs input" : "Show session bar") + ` (${active.title})`}
+    aria-expanded="false"
+    onclick={() => sessionBarOverride.set(false)}
   >
-    <span class="codicon codicon-comment-discussion" aria-hidden="true"></span>
+    <span class="codicon codicon-layout-sidebar-left-off" aria-hidden="true"></span>
     {#if needsAttention}<span class="session-header-badge"></span>{:else if backgroundRuns > 0}<span class="session-header-count">{backgroundRuns}</span>{/if}
   </button>
 {:else}
@@ -445,7 +454,7 @@
           </div>
         {/if}
       </div>
-      <IconButton icon="chevron-up" label="Hide session bar" onclick={() => { closeMenus(); hidden = true; }} />
+      <IconButton icon="layout-sidebar-left" label="Hide session bar" onclick={() => { closeMenus(); sessionBarOverride.set(true); }} />
     </div>
   </header>
 {/if}

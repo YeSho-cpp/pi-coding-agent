@@ -4,6 +4,132 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.32] - 2026-10-29
+
+### Changed
+
+- **Many more file types become chips.** Inline-code paths ending in `.cu`, `.cuh`, `.proto`,
+  `.tf`, `.cmake`, `.jsonl`, `.ipynb`, `.sbatch`, `.tpl`, `.service` and about a hundred
+  other source, build, config, schema and data extensions now render as file chips, as do
+  extension-less build files such as `Jenkinsfile`, `Procfile`, `go.mod` and `go.sum`.
+  Extensions that double as everyday identifiers (`process.env`, `np.sum`, `this.props`,
+  `mock.patch`) deliberately stay plain code, and binaries, archives and media still do not
+  chip.
+
+## [1.1.31] - 2026-10-29
+
+### Changed
+
+- **A running turn unfolds only the step in progress.** Every step (Thinking, bash, any
+  tool) stays a one-line row; the last one still running opens by itself, showing the
+  reasoning as it is written, or the tool's command and live output tailing to the newest
+  line. It folds back the moment it ends, and the finished turn still collapses into the
+  "Completed" summary. A step must stay in progress for 0.35s before it opens, so instant
+  tools never flash open; rows you opened or folded yourself are left alone. Opening and
+  folding animate (skipped with reduced motion).
+- Reasoning text is now actually muted and 11.5px, as its styles always intended.
+- The "Thinking" shimmer follows the reasoning being written, not its whole message, so it
+  stops once the model moves on to a tool call or the reply.
+
+### Fixed
+
+- A path like `/…/gburn-amd.Dockerfile` in inline code rendered as a plain code span instead
+  of a file chip, because `.Dockerfile` was not a recognised extension. `name.Dockerfile`,
+  `Dockerfile.variant` and `Containerfile` now chip like `Dockerfile` does.
+
+## [1.1.30] - 2026-10-29
+
+### Changed
+
+- **Conversation area polish** (shapes and opacities borrowed from dsh, colors stay on
+  theme tokens): the user bubble uses a rounder 18px shape with a hairline ring instead of a
+  border; message action rows are 28px icon-only buttons, visible on the newest turn and
+  revealed on hover for earlier turns; the changed-files card has a tinted header tile, flat
+  rows and a fold toggle after five files; expanded tool sections render as one card with
+  the Input/Output tab strip joined to its body.
+
+## [1.1.29] - 2026-10-29
+
+### Added
+
+- **Session bar starts collapsed.** New setting `piAgent.session.barCollapsedByDefault`
+  (default on) hides the top session bar when a session opens; a sidebar-toggle button at
+  the top of the chat shows it again and keeps the needs-input badge and background-run count.
+
+### Changed
+
+- **Work trace header shows what changed.** The collapsed header now ends with the number of
+  changed files and the total `+added -removed` line counts, next to steps and duration.
+
+## [1.1.28] - 2026-10-28
+
+### Changed
+
+- **Softer surface texture.** Borders on the composer, popovers, code blocks, tables and
+  tool output are now 0.5px hairlines with a soft glow instead of 1px strokes; shared
+  hairline, elevation and overlay tokens live in `tokens.css` (light and dark).
+- **Composer.** The input card is rounder, glows with the accent colour on focus, and the
+  send/stop buttons are circular.
+- **Context usage.** The ring animates smoothly; the popover leads with the percentage and
+  token count and shows a usage bar (red from 80%).
+- **Tool cards.** Section tabs are a segmented control; diff lines carry a 3px edge bar.
+- **Permission chips** use hairline tags.
+- **Thinking.** The running "Thinking" label has a shimmer sweep (off under reduced motion).
+
+## [1.1.27] - 2026-10-28
+
+### Added
+
+- **Syntax-coloured tool output.** The output of a `read` call or a bash `sed -n`/`cat`/
+  `head`/`tail` of a file is highlighted by the file's language (same two-stage
+  highlight.js then host TextMate pass as chat code blocks), in the card and in the
+  Open dialog. `write`/`edit` file content in Input is coloured too.
+- **File chip for reads.** A `read`, or a bash command that only prints part of one
+  file, shows that file in the row header (icon, name, `:start-end`) instead of a
+  clipped command, and offers the Open file action.
+
+### Fixed
+
+- Syntax colours are now defined globally with a light-theme palette, so code outside
+  the markdown body is coloured and light themes no longer get the dark palette.
+
+## [1.1.26] - 2026-10-28
+
+### Changed
+
+- **Flat, quiet work trace.** Tool and reasoning rows lose their card border and
+  background and read as grey single-line rows; the arrow appears on hover, the success
+  tick is gone (running dot and error mark stay), and an expanded trace is joined by a
+  thin left rail. Only the expanded output/diff blocks keep a border. The collapsed
+  header and the "reply" divider are flatter, and the divider only shows while the trace
+  is open.
+- **Reasoning rows preview their content.** A collapsed row shows the first line of the
+  thought (streaming rows show the latest finished paragraph), faded at the right edge.
+- **Bash rows drop the leading `cd <dir> &&`** from the displayed command; the tooltip
+  and output dialog still show the full command.
+
+## [1.1.25] - 2026-10-28
+
+### Added
+
+- **Mermaid Preview/Source toggle, Mermaid-Chart palettes.** Diagram blocks gain a
+  preview/source segmented control in the toolbar (default preview, one shared knob for
+  the transcript) next to Copy. Rendering uses Mermaid-Chart-flavoured base themes picked
+  side by side against the stock ones — soft blue on light VS Code themes, slate on dark
+  — re-initialized per render so a theme switch recolors the next diagram.
+- **HTML and SVG fence previews.** Complete ```html and ```svg fences now mount a
+  preview component (same Preview/Source toggle, default preview) instead of a plain code
+  block; incomplete fences still stream as source. HTML is DOMPurify-sanitized static
+  markup — scripts, frames, and form controls are forbidden, `<style>` bodies are kept
+  (wrapped so leading style tags survive body serialization); SVG reuses the Mermaid SVG
+  sanitizer, which strips implicit remote references. Previews are height-capped with
+  internal scrolling.
+- **Mermaid labels survive sanitization.** DOMPurify 3.x defaults its HTML integration
+  points to MathML's `annotation-xml` only, so every HTML label inside mermaid's
+  `<foreignObject>` (all node and subgraph text) was stripped — diagrams rendered as
+  empty boxes. The sanitizer now re-allows `foreignObject` as the spec's SVG→HTML
+  integration point; its HTML children still pass the regular html allowlist.
+
 ## [1.1.24] - 2026-10-28
 
 ### Changed

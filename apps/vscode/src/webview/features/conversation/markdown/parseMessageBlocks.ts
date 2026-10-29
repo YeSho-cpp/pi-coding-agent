@@ -1,12 +1,18 @@
+export type PreviewLanguage = "mermaid" | "html" | "svg";
+
 export type MarkdownSegment =
   | { type: "markdown"; text: string }
-  | { type: "mermaid"; text: string };
+  | { type: PreviewLanguage; text: string };
+
+/** Fences that mount a dedicated preview component instead of a plain code block. */
+const PREVIEW_LANGUAGES = new Set<PreviewLanguage>(["mermaid", "html", "svg"]);
 
 const FENCE_OPEN = /^( {0,3})(`{3,}|~{3,})([^\n`]*)$/;
 
 /**
- * Split message text into markdown segments and complete mermaid fences.
- * Incomplete fences stay inside markdown so streaming does not mount a diagram early.
+ * Split message text into markdown segments and complete preview fences
+ * (mermaid/html/svg). Incomplete fences stay inside markdown so streaming
+ * does not mount a preview early.
  */
 export function parseMessageBlocks(content: string): MarkdownSegment[] {
   if (!content) return [{ type: "markdown", text: "" }];
@@ -18,6 +24,7 @@ export function parseMessageBlocks(content: string): MarkdownSegment[] {
     marker: string;
     indent: string;
     openLine: string;
+    language: PreviewLanguage;
     body: string[];
     precedingMarkdown: string[];
   } | null = null;
@@ -33,11 +40,12 @@ export function parseMessageBlocks(content: string): MarkdownSegment[] {
       if (open) {
         const marker = open[2]!;
         const language = open[3]!.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
-        if (language === "mermaid") {
+        if (PREVIEW_LANGUAGES.has(language as PreviewLanguage)) {
           fence = {
             marker,
             indent: open[1]!,
             openLine: line,
+            language: language as PreviewLanguage,
             body: [],
             precedingMarkdown: markdownLines,
           };
@@ -56,7 +64,7 @@ export function parseMessageBlocks(content: string): MarkdownSegment[] {
       && close[2]!.length >= fence.marker.length
     ) {
       flushMarkdown(fence.precedingMarkdown);
-      segments.push({ type: "mermaid", text: fence.body.join("\n") });
+      segments.push({ type: fence.language, text: fence.body.join("\n") });
       fence = null;
       continue;
     }
@@ -65,7 +73,7 @@ export function parseMessageBlocks(content: string): MarkdownSegment[] {
   }
 
   if (fence) {
-    // Incomplete mermaid fence: restore raw source into markdown for streaming.
+    // Incomplete preview fence: restore raw source into markdown for streaming.
     markdownLines = [...fence.precedingMarkdown, fence.openLine, ...fence.body, ...markdownLines];
   }
   flushMarkdown(markdownLines);

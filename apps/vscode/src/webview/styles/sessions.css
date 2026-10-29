@@ -1,6 +1,7 @@
 /* Session header, session list, and session menus (global — multi-node / density) */
 
 .session-header-slot { position: relative; min-width: 0; }
+.session-header-slot.collapsed { height: 30px; }
 .session-header {
   position: relative;
   z-index: 20;
@@ -343,10 +344,10 @@ button.session-heading.active { background: var(--frost-hover); }
 .session-header-restore {
   position: absolute;
   z-index: 25;
-  top: 5px;
+  top: 2px;
   right: 9px;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   background: var(--frost-surface-raised);

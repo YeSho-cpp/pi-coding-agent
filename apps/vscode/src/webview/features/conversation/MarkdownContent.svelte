@@ -19,6 +19,7 @@
 <script lang="ts">
   import MarkdownHtml from "./markdown/MarkdownHtml.svelte";
   import MermaidBlock from "./markdown/MermaidBlock.svelte";
+  import PreviewFence from "./markdown/PreviewFence.svelte";
   import { parseMessageBlocks } from "./markdown/parseMessageBlocks";
 
   let { content }: { content: string } = $props();
@@ -30,8 +31,10 @@
   {#each segments as segment, index (segmentKey(segment, index))}
     {#if segment.type === "markdown"}
       <MarkdownHtml content={segment.text} />
-    {:else}
+    {:else if segment.type === "mermaid"}
       <MermaidBlock source={segment.text} />
+    {:else}
+      <PreviewFence language={segment.type} source={segment.text} />
     {/if}
   {/each}
 </div>

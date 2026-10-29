@@ -3,10 +3,15 @@
   import { requestFileIcon } from "./markdown/fileIconClient";
   import type { TurnChangeFile } from "./turnChanges";
 
+  const COLLAPSED_ROWS = 5;
+
   let { files, cwd }: { files: TurnChangeFile[]; cwd: string } = $props();
+  let expanded = $state(false);
 
   const totalAdded = $derived(files.reduce((sum, file) => sum + file.added, 0));
   const totalRemoved = $derived(files.reduce((sum, file) => sum + file.removed, 0));
+  const foldable = $derived(files.length > COLLAPSED_ROWS);
+  const rows = $derived(foldable && !expanded ? files.slice(0, COLLAPSED_ROWS) : files);
   const icons = $state<Record<string, string | null>>({});
 
   $effect(() => {
@@ -36,14 +41,19 @@
 
 <div class="turn-changes" role="group" aria-label="Changed files">
   <div class="turn-changes-head">
-    <span class="turn-changes-title">已更改 {files.length} 个文件</span>
-    <span class="turn-changes-total">
-      <span class="stat-add">+{totalAdded}</span>
-      <span class="stat-del">-{totalRemoved}</span>
+    <span class="turn-changes-tile" aria-hidden="true">
+      <span class="codicon codicon-diff-multiple"></span>
+    </span>
+    <span class="turn-changes-titles">
+      <span class="turn-changes-title">已更改 {files.length} 个文件</span>
+      <span class="turn-changes-total">
+        <span class="stat-add">+{totalAdded}</span>
+        <span class="stat-del">-{totalRemoved}</span>
+      </span>
     </span>
   </div>
   <div class="turn-changes-list">
-    {#each files as file (file.path)}
+    {#each rows as file (file.path)}
       <button type="button" class="turn-change-row" title={file.path} onclick={() => openDiff(file)}>
         {#if icons[file.path]}
           <img class="turn-change-icon" src={icons[file.path] ?? ""} alt="" aria-hidden="true" />
@@ -58,58 +68,100 @@
       </button>
     {/each}
   </div>
+  {#if foldable}
+    <button
+      type="button"
+      class="turn-changes-toggle"
+      aria-expanded={expanded}
+      aria-label={expanded ? "Show fewer changed files" : `Show all ${files.length} changed files`}
+      onclick={() => (expanded = !expanded)}
+    >
+      <span>{expanded ? "收起" : `全部 ${files.length} 个文件`}</span>
+      <span class={`codicon codicon-chevron-${expanded ? "up" : "down"}`} aria-hidden="true"></span>
+    </button>
+  {/if}
 </div>
 
 <style>
   .turn-changes {
     min-width: 0;
-    margin-top: 6px;
-    padding: 8px 10px 6px;
-    border: 1px solid var(--frost-border-soft);
-    border-radius: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--frost-surface) 72%, transparent);
+    box-shadow: var(--frost-hairline-soft);
   }
 
   .turn-changes-head {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 4px;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--frost-text) 4%, transparent);
+  }
+
+  .turn-changes-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--frost-text) 6%, transparent);
+    box-shadow: var(--frost-hairline-soft);
+    color: var(--frost-muted);
+    font-size: 16px;
+  }
+
+  .turn-changes-titles {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
   }
 
   .turn-changes-title {
-    color: var(--frost-muted);
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    overflow: hidden;
+    color: var(--frost-text);
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .turn-changes-total {
+    display: inline-flex;
+    gap: 6px;
     font-family: var(--font-mono);
     font-size: 10.5px;
+    line-height: 16px;
   }
 
   .turn-changes-list {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    border-top: 0.5px solid var(--frost-stroke-soft);
   }
 
   .turn-change-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
     width: 100%;
-    padding: 3px 4px;
+    min-height: 28px;
+    padding: 5px 12px;
     border: 0;
-    border-radius: 5px;
+    border-radius: 0;
     background: transparent;
     color: var(--frost-text);
-    font-size: 11.5px;
+    font-size: 12px;
     text-align: left;
     cursor: pointer;
+    transition: background var(--motion-fast) ease;
   }
 
   .turn-change-row:hover {
@@ -135,14 +187,36 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: 11px;
   }
 
   .turn-change-stat {
+    display: inline-flex;
     flex: none;
+    gap: 6px;
     font-family: var(--font-mono);
     font-size: 10.5px;
+  }
+
+  .turn-changes-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding: 7px 12px;
+    border: 0;
+    border-top: 0.5px solid var(--frost-stroke-soft);
+    border-radius: 0;
+    background: transparent;
+    color: var(--frost-muted);
+    font-size: 11.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--motion-fast) ease;
+  }
+
+  .turn-changes-toggle:hover {
+    background: var(--frost-hover);
+    color: var(--frost-text);
   }
 
   .stat-add {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { postToHost } from "../../../bridge/vscodeBridge";
   import { getCachedMermaidSvg, renderMermaidSvg } from "./mermaidRenderer";
+  import { previewView } from "./previewView";
 
   let { source }: { source: string } = $props();
 
@@ -52,12 +53,32 @@
   <div class="mermaid-toolbar">
     <span class="codicon codicon-type-hierarchy" aria-hidden="true"></span>
     <span>diagram</span>
-    <button type="button" class="mermaid-copy" title="Copy mermaid source" onclick={copySource}>
-      <span class="codicon codicon-copy" aria-hidden="true"></span>
-      <span>{copied ? "Copied" : "Copy"}</span>
-    </button>
+    <span class="mermaid-actions">
+      <span class="preview-toggle" role="group" aria-label="Diagram view">
+        <button
+          type="button"
+          class="preview-toggle-btn"
+          class:active={$previewView === "preview"}
+          aria-pressed={$previewView === "preview"}
+          onclick={() => { previewView.set("preview"); }}
+        >预览</button>
+        <button
+          type="button"
+          class="preview-toggle-btn"
+          class:active={$previewView === "source"}
+          aria-pressed={$previewView === "source"}
+          onclick={() => { previewView.set("source"); }}
+        >源码</button>
+      </span>
+      <button type="button" class="mermaid-copy" title="Copy mermaid source" onclick={copySource}>
+        <span class="codicon codicon-copy" aria-hidden="true"></span>
+        <span>{copied ? "Copied" : "Copy"}</span>
+      </button>
+    </span>
   </div>
-  {#if status === "ready" && svgHtml}
+  {#if $previewView === "source"}
+    <pre class="hljs"><code>{source}</code></pre>
+  {:else if status === "ready" && svgHtml}
     <div class="mermaid-host">{@html svgHtml}</div>
   {:else if status === "error"}
     <div class="mermaid-fallback">
@@ -88,8 +109,33 @@
   font-size: 10.5px;
   background: color-mix(in srgb, var(--frost-surface) 55%, transparent);
 }
-.mermaid-copy {
+.mermaid-actions {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.preview-toggle {
+  display: inline-flex;
+  border: 1px solid var(--frost-border-soft);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.preview-toggle-btn {
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--frost-muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+.preview-toggle-btn:hover { color: var(--frost-text); background: var(--frost-hover); }
+.preview-toggle-btn.active {
+  background: color-mix(in srgb, var(--frost-link) 18%, transparent);
+  color: var(--frost-text);
+}
+.mermaid-copy {
   display: inline-flex;
   align-items: center;
   gap: 4px;

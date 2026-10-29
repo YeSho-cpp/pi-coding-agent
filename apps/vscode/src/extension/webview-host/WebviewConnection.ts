@@ -252,6 +252,9 @@ export class WebviewConnection implements vscode.Disposable {
         && Boolean(displayedSession && this.#isExternalized(displayedSession.id)),
       piAvailable: !piError,
       extensionVersion: this.#registry.extensionVersion,
+      sessionBarCollapsedByDefault: vscode.workspace
+        .getConfiguration("piAgent")
+        .get<boolean>("session.barCollapsedByDefault", true),
       ...(piError ? { piError } : {}),
     };
   }

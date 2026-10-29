@@ -64,6 +64,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       this.#drafts.onDidOwnershipChange(() => this.#refreshConnections()),
       this.#panels.onDidChange(() => this.#panelsChanged()),
       vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration("piAgent.session.barCollapsedByDefault")) this.#refreshConnections();
         if (!chatTypographyChanged(event)) return;
         // A full refresh is unnecessary; each ready Webview can accept typography independently.
         this.#forEachConnection((connection) => connection.post({

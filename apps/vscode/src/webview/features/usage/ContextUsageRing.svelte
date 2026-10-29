@@ -69,15 +69,16 @@
     onclick={compactContext}
   >
     <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-      <circle cx="11" cy="11" r={radius} fill="none" stroke="var(--frost-border)" stroke-width="2.2" />
+      <circle cx="11" cy="11" r={radius} fill="none" stroke="var(--frost-stroke)" stroke-width="2" />
       <circle
         cx="11"
         cy="11"
         r={radius}
         fill="none"
         stroke={percent != null && percent >= 80 ? "var(--frost-error)" : "var(--frost-accent)"}
-        stroke-width="2.2"
+        stroke-width="2"
         stroke-linecap="round"
+        style="transition: stroke-dasharray var(--motion-slow) var(--ease-standard), stroke var(--motion-normal)"
         stroke-dasharray={`${dash} ${circumference}`}
         transform="rotate(-90 11 11)"
       />
@@ -93,7 +94,19 @@
       onmouseenter={show}
       onmouseleave={scheduleClose}
     >
-      <div class="popover-title">上下文信息</div>
+      <div class="popover-head">
+        <span class="popover-pct" class:hot={percent != null && percent >= 80}>{percent == null ? "—" : `${percent}%`}</span>
+        <span class="popover-sub">
+          {#if context?.tokens != null && context.contextWindow}
+            {compactNumber(context.tokens)} / {compactNumber(context.contextWindow)}
+          {:else}
+            上下文信息
+          {/if}
+        </span>
+      </div>
+      <div class="usage-track" aria-hidden="true">
+        <span class:hot={percent != null && percent >= 80} style:width={`${percent ?? 0}%`}></span>
+      </div>
       <div class="row">
         <span>Token</span>
         <strong>
@@ -153,6 +166,7 @@
     color: var(--frost-muted);
     cursor: pointer;
   }
+  .context-ring { transition: background var(--motion-fast) var(--ease-standard); }
   .context-ring:hover { background: var(--frost-hover); }
   .context-ring.compacting svg circle:last-child {
     animation: ring-pulse 1s ease-in-out infinite;
@@ -165,20 +179,52 @@
     z-index: 70;
     right: 0;
     bottom: calc(100% + 6px);
-    width: min(260px, calc(100vw - 20px));
-    padding: 12px 12px 10px;
-    border: 1px solid var(--frost-border);
-    border-radius: 10px;
+    width: min(264px, calc(100vw - 20px));
+    padding: 14px 14px 11px;
+    border: 0;
+    border-radius: 14px;
     background: var(--frost-surface-raised);
-    box-shadow: var(--frost-shadow);
+    box-shadow: var(--frost-elev-popover);
     font-size: 12px;
+    animation: ring-pop var(--motion-fast) var(--ease-standard);
   }
-  .popover-title {
+  @keyframes ring-pop {
+    from { opacity: 0; transform: translateY(3px); }
+  }
+  .popover-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     margin-bottom: 8px;
-    text-align: center;
-    font-weight: 600;
-    font-size: 13px;
   }
+  .popover-pct {
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .popover-pct.hot { color: var(--frost-error); }
+  .popover-sub {
+    color: var(--frost-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .usage-track {
+    height: 4px;
+    margin-bottom: 9px;
+    border-radius: 2px;
+    background: var(--frost-skeleton);
+    overflow: hidden;
+  }
+  .usage-track > span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--frost-accent);
+    transition: width var(--motion-slow) var(--ease-standard);
+  }
+  .usage-track > span.hot { background: var(--frost-error); }
   .row {
     display: flex;
     align-items: baseline;

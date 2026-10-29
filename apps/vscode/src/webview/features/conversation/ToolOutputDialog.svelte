@@ -1,5 +1,6 @@
 <script lang="ts">
   import { postToHost } from "../../bridge/vscodeBridge";
+  import ToolCode from "./ToolCode.svelte";
 
   let {
     open = $bindable(false),
@@ -7,6 +8,7 @@
     command = "",
     inputText = "",
     outputText = "",
+    outputLang = null,
     isError = false,
   }: {
     open?: boolean;
@@ -14,6 +16,7 @@
     command?: string;
     inputText?: string;
     outputText?: string;
+    outputLang?: string | null;
     isError?: boolean;
   } = $props();
 
@@ -68,7 +71,7 @@
         {/if}
         <div class="tool-dialog-section">
           <div class="tool-dialog-label">Output</div>
-          <pre class="tool-dialog-pre" class:error={isError}><code>{outputText || "(empty)"}</code></pre>
+          <pre class="tool-dialog-pre" class:error={isError}>{#if outputText}<ToolCode code={outputText} lang={outputLang} />{:else}<code>(empty)</code>{/if}</pre>
         </div>
       </div>
     </div>

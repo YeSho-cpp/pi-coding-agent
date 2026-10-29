@@ -37,6 +37,13 @@ describe("planToolSections", () => {
 
     expect(plan.openFile).toEqual({ path: "a.ts", line: 12 });
   });
+
+  it("treats a bash file read as an openable file", () => {
+    const plan = planToolSections(bound({ name: "bash", args: { command: "sed -n '900,935p' a.go" }, output: "x" }));
+
+    expect(plan.openFile).toEqual({ path: "a.go", line: 900, endLine: 935 });
+    expect(planToolSections(bound({ name: "bash", args: { command: "ls | wc -l" }, output: "3" })).openFile).toBeUndefined();
+  });
 });
 
 describe("planToolSections default section", () => {

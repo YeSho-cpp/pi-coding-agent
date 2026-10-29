@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { McpServerView } from "../../src/shared/model/mcpModel.js";
 import type { SessionViewModel } from "../../src/shared/model/sessionViewModel.js";
@@ -25,7 +25,7 @@ const posted: unknown[] = [];
 });
 
 const { default: SessionHeader } = await import("../../src/webview/features/sessions/SessionHeader.svelte");
-const { mcpServers, presentationStore, EMPTY_PRESENTATION } = await import("../../src/webview/state/sessionViewStore.svelte.js");
+const { mcpServers, presentationStore, EMPTY_PRESENTATION, sessionBarOverride } = await import("../../src/webview/state/sessionViewStore.svelte.js");
 const { applyHostMessage } = await import("../../src/webview/bridge/applyHostMessage.js");
 
 function activeSession(): SessionViewModel {
@@ -73,10 +73,37 @@ function togglesSent(): unknown[] {
   return posted.filter((message) => (message as { type?: string }).type === "setMcpServerEnabled");
 }
 
+beforeEach(() => {
+  sessionBarOverride.set(false);
+});
+
 afterEach(() => {
   cleanup();
   mcpServers.set(null);
+  sessionBarOverride.set(null);
   posted.length = 0;
+});
+
+describe("session bar visibility", () => {
+  it("starts collapsed by default and expands from the toggle", async () => {
+    sessionBarOverride.set(null);
+    render(SessionHeader, { props: { sessions: [], active: activeSession() } });
+
+    expect(screen.queryByLabelText("MCP servers")).toBeNull();
+    await fireEvent.click(screen.getByLabelText("Show session bar"));
+    expect(screen.getByLabelText("MCP servers")).toBeTruthy();
+    await fireEvent.click(screen.getByLabelText("Hide session bar"));
+    expect(screen.queryByLabelText("MCP servers")).toBeNull();
+  });
+
+  it("starts expanded when the setting turns the default off", () => {
+    sessionBarOverride.set(null);
+    presentationStore.set({ ...EMPTY_PRESENTATION, sessionBarCollapsedByDefault: false });
+    render(SessionHeader, { props: { sessions: [], active: activeSession() } });
+
+    expect(screen.getByLabelText("MCP servers")).toBeTruthy();
+    presentationStore.set(EMPTY_PRESENTATION);
+  });
 });
 
 describe("session header MCP panel", () => {
