@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.34] - 2026-10-29
+
+### Changed
+
+- **The changed-files card folds from its header.** Clicking the summary line (with its new
+  chevron) folds the whole card to one 50px row, so a turn that touched a handful of files
+  no longer takes 160px of the conversation; clicking again reopens it. A list longer than
+  five files keeps its separate "全部 N 个文件" fold inside the opened card. The fold animates
+  over 170ms and is skipped under reduced motion. Cards start folded, so a turn's changed files
+  cost one line until opened.
+
 ## [1.1.33] - 2026-10-29
 
 ### Fixed

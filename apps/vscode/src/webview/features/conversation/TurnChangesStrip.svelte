@@ -1,12 +1,19 @@
 <script lang="ts">
+  import { slide } from "svelte/transition";
+
   import { postToHost } from "../../bridge/vscodeBridge";
   import { requestFileIcon } from "./markdown/fileIconClient";
   import type { TurnChangeFile } from "./turnChanges";
 
   const COLLAPSED_ROWS = 5;
+  const SLIDE_MS = 170;
 
   let { files, cwd }: { files: TurnChangeFile[]; cwd: string } = $props();
+  /** The whole card folds to its header line; `expanded` only reaches the rows past `COLLAPSED_ROWS`. */
+  let open = $state(false);
   let expanded = $state(false);
+  const reduceMotion = typeof window !== "undefined"
+    && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
   const totalAdded = $derived(files.reduce((sum, file) => sum + file.added, 0));
   const totalRemoved = $derived(files.reduce((sum, file) => sum + file.removed, 0));
@@ -40,7 +47,12 @@
 </script>
 
 <div class="turn-changes" role="group" aria-label="Changed files">
-  <div class="turn-changes-head">
+  <button
+    type="button"
+    class="turn-changes-head"
+    aria-expanded={open}
+    onclick={() => (open = !open)}
+  >
     <span class="turn-changes-tile" aria-hidden="true">
       <span class="codicon codicon-diff-multiple"></span>
     </span>
@@ -51,34 +63,39 @@
         <span class="stat-del">-{totalRemoved}</span>
       </span>
     </span>
-  </div>
-  <div class="turn-changes-list">
-    {#each rows as file (file.path)}
-      <button type="button" class="turn-change-row" title={file.path} onclick={() => openDiff(file)}>
-        {#if icons[file.path]}
-          <img class="turn-change-icon" src={icons[file.path] ?? ""} alt="" aria-hidden="true" />
-        {:else}
-          <span class="codicon codicon-file turn-change-icon-fallback" aria-hidden="true"></span>
-        {/if}
-        <span class="turn-change-name">{displayName(file.path)}</span>
-        <span class="turn-change-stat">
-          <span class="stat-add">+{file.added}</span>
-          <span class="stat-del">-{file.removed}</span>
-        </span>
-      </button>
-    {/each}
-  </div>
-  {#if foldable}
-    <button
-      type="button"
-      class="turn-changes-toggle"
-      aria-expanded={expanded}
-      aria-label={expanded ? "Show fewer changed files" : `Show all ${files.length} changed files`}
-      onclick={() => (expanded = !expanded)}
-    >
-      <span>{expanded ? "收起" : `全部 ${files.length} 个文件`}</span>
-      <span class={`codicon codicon-chevron-${expanded ? "up" : "down"}`} aria-hidden="true"></span>
-    </button>
+    <span class={`codicon codicon-chevron-${open ? "down" : "right"} turn-changes-chevron`} aria-hidden="true"></span>
+  </button>
+  {#if open}
+    <div class="turn-changes-body" transition:slide={{ duration: reduceMotion ? 0 : SLIDE_MS }}>
+      <div class="turn-changes-list">
+        {#each rows as file (file.path)}
+          <button type="button" class="turn-change-row" title={file.path} onclick={() => openDiff(file)}>
+            {#if icons[file.path]}
+              <img class="turn-change-icon" src={icons[file.path] ?? ""} alt="" aria-hidden="true" />
+            {:else}
+              <span class="codicon codicon-file turn-change-icon-fallback" aria-hidden="true"></span>
+            {/if}
+            <span class="turn-change-name">{displayName(file.path)}</span>
+            <span class="turn-change-stat">
+              <span class="stat-add">+{file.added}</span>
+              <span class="stat-del">-{file.removed}</span>
+            </span>
+          </button>
+        {/each}
+      </div>
+      {#if foldable}
+        <button
+          type="button"
+          class="turn-changes-toggle"
+          aria-expanded={expanded}
+          aria-label={expanded ? "Show fewer changed files" : `Show all ${files.length} changed files`}
+          onclick={() => (expanded = !expanded)}
+        >
+          <span>{expanded ? "收起" : `全部 ${files.length} 个文件`}</span>
+          <span class={`codicon codicon-chevron-${expanded ? "up" : "down"}`} aria-hidden="true"></span>
+        </button>
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -96,9 +113,37 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
     min-height: 48px;
     padding: 8px 12px;
+    border: 0;
     background: color-mix(in srgb, var(--frost-text) 4%, transparent);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--motion-fast) ease;
+  }
+
+  .turn-changes-head:hover {
+    background: color-mix(in srgb, var(--frost-text) 7%, transparent);
+  }
+
+  .turn-changes-head:focus-visible {
+    outline: 1px solid var(--frost-focus);
+    outline-offset: -1px;
+  }
+
+  .turn-changes-chevron {
+    flex: none;
+    margin-left: 2px;
+    color: var(--frost-faint);
+    font-size: 12px;
+    transition: color var(--motion-fast) ease;
+  }
+
+  .turn-changes-head:hover .turn-changes-chevron {
+    color: var(--frost-text);
   }
 
   .turn-changes-tile {
@@ -139,11 +184,16 @@
     line-height: 16px;
   }
 
+  .turn-changes-body {
+    min-width: 0;
+    overflow: hidden;
+    border-top: 0.5px solid var(--frost-stroke-soft);
+  }
+
   .turn-changes-list {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    border-top: 0.5px solid var(--frost-stroke-soft);
   }
 
   .turn-change-row {
