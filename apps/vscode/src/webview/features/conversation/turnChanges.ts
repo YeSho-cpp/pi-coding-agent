@@ -9,6 +9,9 @@ export interface TurnChangeFile {
 }
 
 /** Line prefixes the diff renderer already classifies as add/remove (`!` is Pi's replace-add). */
+/** Counting splits the whole diff; a finished tool keeps one `recognized` object, so each is counted once. */
+const countsByRecognized = new WeakMap<object, { added: number; removed: number }>();
+
 export function diffLineCounts(diff: string): { added: number; removed: number } {
   let added = 0;
   let removed = 0;
@@ -32,7 +35,13 @@ export function summarizeTurnChanges(turn: AgentTurnView): TurnChangeFile[] {
     const path = item.tool.recognized?.location?.path;
     const diff = item.tool.recognized?.diff;
     if (!path || !diff) continue;
-    const { added, removed } = diffLineCounts(diff);
+    const recognized = item.tool.recognized!;
+    let counts = countsByRecognized.get(recognized);
+    if (!counts) {
+      counts = diffLineCounts(diff);
+      countsByRecognized.set(recognized, counts);
+    }
+    const { added, removed } = counts;
     if (added === 0 && removed === 0) continue;
     const existing = byPath.get(path);
     if (existing) {

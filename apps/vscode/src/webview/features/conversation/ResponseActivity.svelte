@@ -53,7 +53,7 @@
 <div class="response-activity" class:response-error={activity.status === "error"} bind:this={rootEl}>
   <div class="response-snapshot" data-message-snapshot>
   {#each activity.blocks as block, index (index)}
-    {#if block.type === "text" && block.text}<MarkdownContent content={block.text} />{/if}
+    {#if block.type === "text" && block.text}<MarkdownContent content={block.text} streaming={activity.status === "streaming"} />{/if}
     {#if block.type === "images"}<ImageGallery images={block.images} />{/if}
     {#if block.type === "error"}<div class="inline-error">{block.text}</div>{/if}
   {/each}

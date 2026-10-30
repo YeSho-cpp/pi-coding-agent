@@ -56,6 +56,7 @@ export class SessionWebviewCoordinator implements vscode.Disposable {
       extensionUri,
       (endpoint) => this.#createConnection(endpoint),
     );
+    registry.setPinnedSessions(() => this.#panels.sessionIds());
     this.#disposables.push(
       registry.onDidChange(() => this.#registryChanged()),
       registry.onDidToast((toast) => this.#sidebar?.post({ type: "toast", ...toast })),

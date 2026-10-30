@@ -1,5 +1,7 @@
 import type { RpcSessionEntry } from "@frostime/pi-rpc";
 
+import { acyclicParents } from "./acyclicParents.js";
+
 export interface SessionEntryNode {
   id: string;
   type: string;
@@ -175,8 +177,7 @@ function buildIndex(
   activePath: readonly string[],
   leafId: string | null,
 ): SessionEntryIndex {
-  const parentById = new Map<string, string | null>();
-  for (const node of nodesById.values()) parentById.set(node.id, validParentId(node, nodesById));
+  const parentById = acyclicParents(nodesById);
 
   const childrenByParentId = new Map<string | null, string[]>();
   childrenByParentId.set(null, []);
@@ -195,22 +196,6 @@ function buildIndex(
     activePath: [...activePath],
     leafId,
   };
-}
-
-function validParentId(
-  node: SessionEntryNode,
-  nodesById: ReadonlyMap<string, SessionEntryNode>,
-): string | null {
-  if (node.parentId === null || !nodesById.has(node.parentId) || node.parentId === node.id) return null;
-
-  const seen = new Set([node.id]);
-  let currentId: string | null = node.parentId;
-  while (currentId !== null) {
-    if (seen.has(currentId)) return null;
-    seen.add(currentId);
-    currentId = nodesById.get(currentId)?.parentId ?? null;
-  }
-  return node.parentId;
 }
 
 function messageRoleOf(entry: RpcSessionEntry): string | undefined {

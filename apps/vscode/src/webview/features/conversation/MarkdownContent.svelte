@@ -2,7 +2,9 @@
   import type { MarkdownSegment } from "./markdown/parseMessageBlocks";
 
   function segmentKey(segment: MarkdownSegment, index: number): string {
-    // Content-stable keys keep completed mermaid mounts alive across streaming updates.
+    // Markdown keeps one mount while its text streams in (a content key would rebuild the whole
+    // block on every token); fenced previews are keyed by content so completed ones survive later updates.
+    if (segment.type === "markdown") return `${index}:markdown`;
     return `${index}:${segment.type}:${segment.text.length}:${simpleHash(segment.text)}`;
   }
 
@@ -22,7 +24,7 @@
   import PreviewFence from "./markdown/PreviewFence.svelte";
   import { parseMessageBlocks } from "./markdown/parseMessageBlocks";
 
-  let { content }: { content: string } = $props();
+  let { content, streaming = false }: { content: string; streaming?: boolean } = $props();
 
   const segments = $derived(parseMessageBlocks(content));
 </script>
@@ -30,7 +32,7 @@
 <div class="message-content">
   {#each segments as segment, index (segmentKey(segment, index))}
     {#if segment.type === "markdown"}
-      <MarkdownHtml content={segment.text} />
+      <MarkdownHtml content={segment.text} {streaming} />
     {:else if segment.type === "mermaid"}
       <MermaidBlock source={segment.text} />
     {:else}

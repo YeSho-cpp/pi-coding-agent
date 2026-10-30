@@ -14,6 +14,12 @@
   /** The reader's own toggle; until they make one the row follows `live`. */
   let chosenOpen = $state<boolean | null>(null);
   const open = $derived(chosenOpen ?? live);
+  /** A closed row renders no text until first opened, so a long session does not parse every reasoning up front. */
+  let everOpened = $state(false);
+  $effect.pre(() => {
+    if (open) everOpened = true;
+  });
+  const mounted = $derived(open || everOpened);
   const thinking = $derived(active ?? activity.status === "streaming");
   const preview = $derived(reasoningPreview(activity.text, thinking));
 </script>
@@ -27,9 +33,11 @@
     <span class={`codicon codicon-chevron-${open ? "down" : "right"} activity-chevron`} aria-hidden="true"></span>
   </Collapsible.Trigger>
   <Collapsible.Content class="activity-content reasoning-content">
+    {#if mounted}
     <div class="reasoning-body" class:reasoning-live={thinking} use:stickToEnd={thinking}>
-      <MarkdownContent content={activity.text} />
+      <MarkdownContent content={activity.text} streaming={thinking} />
     </div>
+    {/if}
   </Collapsible.Content>
 </Collapsible.Root>
 

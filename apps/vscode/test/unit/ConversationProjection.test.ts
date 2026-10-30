@@ -1038,6 +1038,52 @@ describe("ConversationProjection", () => {
   });
 });
 
+describe("ConversationProjection identity across incremental reconcile", () => {
+  it("keeps every untouched turn the same object, so the Webview delta does not resend them", () => {
+    const projection = new ConversationProjection();
+    projection.replaceEntries([
+      userEntry("u1", null, "first", 1),
+      assistantEntry("a1", "u1", [{ type: "text", text: "one" }], "stop", 2),
+      userEntry("u2", "a1", "second", 3),
+      assistantEntry("a2", "u2", [{ type: "text", text: "two" }], "stop", 4),
+    ], []);
+    const before = turns(projection.read().items);
+    expect(before).toHaveLength(2);
+
+    expect(projection.reconcileEntries([
+      userEntry("u3", "a2", "third", 5),
+      assistantEntry("a3", "u3", [{ type: "text", text: "three" }], "stop", 6),
+    ], [])).toBe("applied");
+
+    const after = turns(projection.read().items);
+    expect(after).toHaveLength(3);
+    expect(after[0]).toBe(before[0]);
+    expect(after[1]).toBe(before[1]);
+  });
+
+  it("replaces a branch control only when its path count changed", () => {
+    const projection = new ConversationProjection();
+    const edge = { branchPointId: "a1", activeChildEntryId: "u2", pathCount: 2 };
+    projection.replaceEntries([
+      userEntry("u1", null, "first", 1),
+      assistantEntry("a1", "u1", [{ type: "text", text: "one" }], "stop", 2),
+      userEntry("u2", "a1", "second", 3),
+    ], [edge]);
+    const controlOf = () => projection.read().items
+      .flatMap((item) => item.type === "turn" ? item.items : [item])
+      .find((item) => item.type === "branchControl");
+    const first = controlOf();
+    expect(first).toBeDefined();
+
+    projection.reconcileEntries([], [edge]);
+    expect(controlOf()).toBe(first);
+
+    projection.reconcileEntries([], [{ ...edge, pathCount: 3 }]);
+    expect(controlOf()).not.toBe(first);
+    expect(controlOf()).toMatchObject({ pathCount: 3 });
+  });
+});
+
 function projectedTool(projection: ConversationProjection, toolCallId: string): BoundToolCallView | undefined {
   for (const turn of turns(projection.read().items)) {
     for (const item of turn.items) {

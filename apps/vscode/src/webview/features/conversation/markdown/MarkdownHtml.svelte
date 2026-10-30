@@ -1,12 +1,43 @@
 <script lang="ts">
+  import { untrack } from "svelte";
+
   import { postToHost } from "../../../bridge/vscodeBridge";
   import { ensureKatex, isKatexReady, renderMarkdownHtml } from "./renderMarkdown";
   import { mountMarkdownImages } from "./mountMarkdownImages";
-  import { requestHighlightedCode } from "./highlightClient";
+  import { cachedHighlight, requestHighlightedCode } from "./highlightClient";
   import { requestFileIcon } from "./fileIconClient";
   import { tableToMarkdown } from "./tableMarkdown";
 
-  let { content }: { content: string } = $props();
+  /** Streaming text repaints at most this often; the final text always lands. */
+  const STREAM_RENDER_INTERVAL_MS = 100;
+  /** A fence must sit unchanged this long before the host is asked to tokenize it. */
+  const HIGHLIGHT_DELAY_MS = 150;
+
+  let { content, streaming = false }: { content: string; streaming?: boolean } = $props();
+
+  let held = $state<string | null>(null);
+  let lastRenderAt = Number.NEGATIVE_INFINITY;
+  const shown = $derived(streaming && held !== null ? held : content);
+
+  $effect(() => {
+    if (!streaming) {
+      held = null;
+      return;
+    }
+    const latest = content;
+    if (untrack(() => held) === latest) return;
+    const commit = (): void => {
+      lastRenderAt = performance.now();
+      held = latest;
+    };
+    const wait = lastRenderAt + STREAM_RENDER_INTERVAL_MS - performance.now();
+    if (wait <= 0) {
+      commit();
+      return;
+    }
+    const timer = setTimeout(commit, wait);
+    return () => clearTimeout(timer);
+  });
 
   let container: HTMLDivElement | undefined = $state();
 
@@ -26,7 +57,7 @@
 
   const html = $derived.by(() => {
     void katexGeneration;
-    return renderMarkdownHtml(content);
+    return renderMarkdownHtml(shown);
   });
 
   // ---- Code-block actions ----
@@ -49,6 +80,10 @@
 
     // Upgrade each fence from the instant highlight.js paint to the host's TextMate pass, which
     // tokens like identifiers the way the editor does. Diff fences keep their dedicated renderer.
+    // A fence the host already answered repaints from the cache; the rest are asked for once they
+    // stop changing, so a streaming answer does not send every intermediate state to the host.
+    const upgrades: ReturnType<typeof setTimeout>[] = [];
+    const waiting: HTMLElement[] = [];
     for (const pre of root.querySelectorAll("pre.hljs:not([data-tm])")) {
       const element = pre as HTMLElement;
       if (element.classList.contains("language-diff")) continue;
@@ -58,12 +93,21 @@
       if (!codeEl) continue;
       const text = codeEl.textContent ?? "";
       if (!text) continue;
-      element.dataset.tm = "pending";
-      void requestHighlightedCode(lang, text).then((html) => {
-        if (!html || !element.isConnected || element.dataset.tm !== "pending") return;
-        codeEl.innerHTML = html;
+      const cached = cachedHighlight(lang, text);
+      if (cached) {
+        codeEl.innerHTML = cached;
         element.dataset.tm = "done";
-      });
+        continue;
+      }
+      element.dataset.tm = "pending";
+      waiting.push(element);
+      upgrades.push(setTimeout(() => {
+        void requestHighlightedCode(lang, text).then((html) => {
+          if (!html || !element.isConnected || element.dataset.tm !== "pending") return;
+          codeEl.innerHTML = html;
+          element.dataset.tm = "done";
+        });
+      }, HIGHLIGHT_DELAY_MS));
     }
     // File chips get the active icon-theme artwork in front of the label — the same
     // lookup the composer chips use — resolved lazily through the host.
@@ -113,7 +157,11 @@
       bar.append(copyBtn);
       wrap.insertBefore(bar, table);
     }
-    return () => images.destroy();
+    return () => {
+      images.destroy();
+      for (const timer of upgrades) clearTimeout(timer);
+      for (const element of waiting) if (element.dataset.tm === "pending") delete element.dataset.tm;
+    };
   });
 
   function createCodeBlockActions(): HTMLDivElement {

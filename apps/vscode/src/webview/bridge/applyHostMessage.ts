@@ -1,6 +1,7 @@
 import { BRIDGE_VERSION } from "$shared/bridge/bridgeVersion";
-import type { CollectionDelta, HostToWebviewMessage } from "$shared/bridge/hostToWebview";
+import type { CollectionDelta, HostToWebviewMessage, TurnPatch } from "$shared/bridge/hostToWebview";
 import type { ChatTypographyView } from "$shared/model/chatTypography";
+import type { AgentTurnItemView, AgentTurnView } from "$shared/model/conversationModel";
 import type { SessionViewModel } from "$shared/model/sessionViewModel";
 
 import { applyComposerSeed } from "../features/composer/composerSeedClient";
@@ -16,6 +17,8 @@ import { resolveForkResult } from "../features/conversation/forkMessageClient";
 import { deliverMarkdownImageResult } from "../features/conversation/markdown/markdownImageClient";
 import { composerFocusTick, mcpServers, presentationStore, showToast } from "../state/sessionViewStore.svelte";
 import { get } from "svelte/store";
+
+import { postToHost } from "./vscodeBridge";
 
 export function applyHostMessage(message: HostToWebviewMessage): void {
   if (message.bridgeVersion !== BRIDGE_VERSION) {
@@ -38,6 +41,7 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
       break;
     case "presentationDelta": {
       let displayedSession: SessionViewModel | null = null;
+      let unresolvedPatch = false;
       presentationStore.update((current) => {
         const incoming = message.presentation;
         const incomingBaseId = incoming.displayedSession?.base.id;
@@ -47,6 +51,7 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
           conversationItems: mergeCollection(
             existing?.conversationItems ?? [],
             incoming.displayedSession.conversationItems,
+            () => { unresolvedPatch = true; },
           ),
         } : null;
         return {
@@ -55,6 +60,7 @@ export function applyHostMessage(message: HostToWebviewMessage): void {
           displayedSession,
         };
       });
+      if (unresolvedPatch) requestResync();
       applyComposerSeed(displayedSession, message.presentation.composerDraftAuthority);
       break;
     }
@@ -141,12 +147,64 @@ function setOptionalCssProperty(style: CSSStyleDeclaration, name: string, value:
   else style.removeProperty(name);
 }
 
-export function mergeCollection<T extends { id: string }>(current: readonly T[], delta: CollectionDelta<T>): T[] {
+/**
+ * `onUnresolvedPatch` fires when a turn patch refers to a turn or item this Webview does not
+ * hold, which means the Host's picture of the Webview has drifted and a snapshot is needed.
+ */
+export function mergeCollection<T extends { id: string }>(
+  current: readonly T[],
+  delta: CollectionDelta<T>,
+  onUnresolvedPatch?: () => void,
+): T[] {
   if (delta.mode === "replace") return [...delta.items];
-  if (delta.items.length === 0) return [...current];
+  const patches = delta.turnPatches ?? [];
+  if (delta.items.length === 0 && patches.length === 0) return [...current];
+
+  const patchById = new Map(patches.map((patch) => [patch.id, patch]));
   const updates = new Map(delta.items.map((item) => [item.id, item]));
-  const merged = current.map((item) => updates.get(item.id) ?? item);
+  const merged = current.map((item) => {
+    const replacement = updates.get(item.id);
+    if (replacement) return replacement;
+    const patch = patchById.get(item.id);
+    if (!patch) return item;
+    patchById.delete(item.id);
+    return applyTurnPatch(item, patch, onUnresolvedPatch);
+  });
+  if (patchById.size > 0) onUnresolvedPatch?.();
   const known = new Set(current.map((item) => item.id));
   for (const item of delta.items) if (!known.has(item.id)) merged.push(item);
   return merged;
+}
+
+function applyTurnPatch<T extends { id: string }>(item: T, patch: TurnPatch, onUnresolved: (() => void) | undefined): T {
+  const turn = item as unknown as AgentTurnView;
+  if (turn.type !== "turn") {
+    onUnresolved?.();
+    return item;
+  }
+
+  const byId = new Map<string, AgentTurnItemView>(turn.items.map((entry) => [entry.id, entry]));
+  const appended: string[] = [];
+  for (const entry of patch.items) {
+    if (!byId.has(entry.id)) appended.push(entry.id);
+    byId.set(entry.id, entry);
+  }
+  const order = patch.order ?? [...turn.items.map((entry) => entry.id), ...appended];
+  const items: AgentTurnItemView[] = [];
+  for (const id of order) {
+    const entry = byId.get(id);
+    if (entry) items.push(entry);
+    else onUnresolved?.();
+  }
+  return { ...turn, ...patch.fields, items } as unknown as T;
+}
+
+let lastResyncAt = 0;
+
+/** Asks the Host for a fresh snapshot, at most once a second. */
+function requestResync(): void {
+  const now = Date.now();
+  if (now - lastResyncAt < 1_000) return;
+  lastResyncAt = now;
+  postToHost({ type: "ready" });
 }

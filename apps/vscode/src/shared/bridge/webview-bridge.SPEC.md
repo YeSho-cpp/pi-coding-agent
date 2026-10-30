@@ -16,7 +16,7 @@ A mounted Webview sends `ready` and receives a complete presentation snapshot. A
 
 On `ready` and supported VS Code Chat typography changes, the Host sends `setChatTypography`. Message font settings apply to rendered Markdown, message size also applies to code blocks, editor font family applies to the Composer and code blocks, and editor font size applies to the Composer.
 
-`conversationItems` is one Host-ordered collection per displayed Session. `upsert` requires unchanged prefix order; removal or reordering requires `replace`. Writers replace changed objects rather than mutate them so keyed Webview disclosure state survives reconciliation. `conversationContentRevision` identifies projected conversation-content changes for presentation behavior; scalar Session updates such as stats and runtime status do not advance it.
+`conversationItems` is one Host-ordered collection per displayed Session. `upsert` requires unchanged prefix order; removal or reordering requires `replace`. Writers replace changed objects rather than mutate them so keyed Webview disclosure state survives reconciliation. A turn the Webview already holds travels as a `TurnPatch` (changed turn fields, the activities that are new or replaced, and the item order only when it is not held order plus appended items), so a streaming turn never resends its user message, attached images, or earlier tool output; a turn whose field was removed travels whole. A patch that names a turn or activity the Webview does not hold makes the Webview ask for a fresh snapshot. `conversationContentRevision` identifies projected conversation-content changes for presentation behavior; scalar Session updates such as stats and runtime status do not advance it.
 
 ## Authorization and validation
 

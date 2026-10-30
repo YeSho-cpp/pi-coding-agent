@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.33] - 2026-10-29
+
+### Fixed
+
+Performance and process fixes from an audit for what makes the machine lag. No leaks or
+infinite loops were found; these were avoidable CPU, memory and process costs.
+
+- **Streaming no longer resends the whole turn.** A running turn now travels as a patch: only
+  the activities that changed go over the wire, never again the user's message with its
+  attached screenshots or the earlier tool outputs. Before, every token (up to ~40 a second)
+  reserialized all of it; in a long session whose prompts carry screenshots that was tens of
+  MB per second. (Host/Webview bridge 3.2.)
+- **A finished turn no longer resends and re-renders the whole conversation.** The branch
+  control refresh at each turn end built a new object for every turn, so every turn looked
+  changed.
+- **Streaming markdown stays one mounted block** instead of being rebuilt per token, repaints
+  at most 10 times a second (the last text always lands), and asks the host to highlight a
+  code fence only once it stops changing; answers are cached so finished fences repaint
+  without another round trip.
+- **Closed tool and reasoning rows build nothing until first opened.** They used to render
+  and syntax-highlight their whole body at mount, which made opening a long session slow.
+- **Session tree validation is linear.** It walked every entry's ancestors at each turn end,
+  so cost grew with the square of the session: 10,000 entries took 2.1 s of blocked
+  extension host, now 3 ms.
+- The `piAgent.sessionRunning` context key is set only when it changes, not on every Pi event,
+  and diff line counts are computed once per tool call instead of once per update.
+
+### Added
+
+- **Idle sessions stop their Pi process.** Every session you start keeps its own Pi process
+  and MCP servers. A session that is not selected, not open in an editor tab, and has been
+  idle for `piAgent.session.idleStopMinutes` (default 30; 0 keeps everything running) is
+  stopped; selecting it or sending it a prompt starts it again from its session file.
+
 ## [1.1.32] - 2026-10-29
 
 ### Changed

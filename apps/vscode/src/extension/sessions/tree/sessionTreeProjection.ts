@@ -2,6 +2,7 @@ import type { RpcSessionEntry } from "@frostime/pi-rpc";
 
 import type { ImageAttachmentView } from "../../../shared/model/conversationModel.js";
 import type { ActiveBranchEdge } from "../../conversation/ConversationProjection.js";
+import { acyclicParents } from "../acyclicParents.js";
 import type { SessionEntryIndex } from "../SessionEntryState.js";
 
 export interface SessionTreeIndex {
@@ -41,8 +42,7 @@ export function buildSessionTreeIndex(
     if (entry.id && !entriesById.has(entry.id)) entriesById.set(entry.id, entry);
   }
 
-  const parentById = new Map<string, string | null>();
-  for (const entry of entriesById.values()) parentById.set(entry.id, safeParentId(entry, entriesById));
+  const parentById = acyclicParents(entriesById);
 
   const childrenById = new Map<string | null, string[]>();
   childrenById.set(null, []);
@@ -115,24 +115,6 @@ export function projectEditableTarget(entry: RpcSessionEntry): EditableTargetPro
     collectAttachments(entry.message.attachments, entry.id, images);
   }
   return { entryId: entry.id, text: text.join("\n"), images };
-}
-
-function safeParentId(
-  entry: RpcSessionEntry,
-  entriesById: ReadonlyMap<string, RpcSessionEntry>,
-): string | null {
-  const parentId = entry.parentId;
-  if (!parentId || !entriesById.has(parentId) || parentId === entry.id) return null;
-
-  const seen = new Set([entry.id]);
-  let currentId: string | null = parentId;
-  while (currentId) {
-    if (seen.has(currentId)) return null;
-    seen.add(currentId);
-    const current = entriesById.get(currentId);
-    currentId = current?.parentId && entriesById.has(current.parentId) ? current.parentId : null;
-  }
-  return parentId;
 }
 
 function activeEntryPath(

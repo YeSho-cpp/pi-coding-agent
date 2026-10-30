@@ -1,7 +1,7 @@
 import type { ChatTypographyView } from "../model/chatTypography.js";
 import type { ComposerDraftView } from "../model/composerDraftModel.js";
 import type { ContextAttachItemView } from "../model/contextAttachModel.js";
-import type { ConversationItemView } from "../model/conversationModel.js";
+import type { AgentTurnItemView, AgentTurnView, ConversationItemView } from "../model/conversationModel.js";
 import type { McpServerView } from "../model/mcpModel.js";
 import type { SessionViewModel } from "../model/sessionViewModel.js";
 import type { WebviewPresentationView } from "../model/webviewPresentationModel.js";
@@ -25,9 +25,25 @@ export type MarkdownImageLoadResult =
     }
   | { ok: false; reason: MarkdownImageFailureReason };
 
+/**
+ * Edits a turn the Webview already holds, so a running turn does not resend its user message
+ * (with attached images) and every earlier tool output each time one token arrives.
+ */
+export interface TurnPatch {
+  id: string;
+  /** Only the turn fields whose value changed to a defined value. */
+  fields: Partial<Pick<AgentTurnView, "status" | "startedAt" | "endedAt" | "userMessage">>;
+  /** Items that are new or differ from the held ones: held ids are replaced in place, new ids append in the order given. */
+  items: AgentTurnItemView[];
+  /** The turn's complete item order; present only when it is not "held order plus the new items". */
+  order?: string[];
+}
+
 export interface CollectionDelta<T> {
   mode: "replace" | "upsert";
   items: T[];
+  /** Upserts of turns already held, expressed as patches; the Webview applies them before `items`. */
+  turnPatches?: TurnPatch[];
 }
 
 export interface PresentationDeltaView extends Omit<WebviewPresentationView, "displayedSession"> {

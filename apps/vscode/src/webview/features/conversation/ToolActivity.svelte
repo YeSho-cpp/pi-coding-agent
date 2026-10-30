@@ -17,6 +17,12 @@
   /** The reader's own toggle; until they make one the card follows `live`. */
   let chosenOpen = $state<boolean | null>(null);
   const open = $derived(chosenOpen ?? live);
+  /** A closed row renders no body until first opened: a long session holds hundreds, and each would highlight at mount. */
+  let everOpened = $state(false);
+  $effect.pre(() => {
+    if (open) everOpened = true;
+  });
+  const mounted = $derived(open || everOpened);
   let dialogOpen = $state(false);
   let copiedOut = $state(false);
   let copiedIn = $state(false);
@@ -132,6 +138,7 @@
     <span class={`codicon codicon-chevron-${open ? "down" : "right"} activity-chevron`} aria-hidden="true"></span>
   </Collapsible.Trigger>
   <Collapsible.Content class="activity-content tool-activity-content">
+    {#if mounted}
     <div class="tool-body" class:tool-card={plan.sections.length > 0}>
       {#if plan.sections.length > 1}
         {@const initialSection = plan.sections[0]!.id}
@@ -189,6 +196,7 @@
         {@render sectionBody(activeSection)}
       {/if}
     </div>
+    {/if}
   </Collapsible.Content>
 </Collapsible.Root>
 

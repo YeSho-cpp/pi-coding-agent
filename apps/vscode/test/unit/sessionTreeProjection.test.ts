@@ -21,6 +21,20 @@ const entries: RpcSessionEntry[] = [
   entry("nested-b", "branch-b", 9, "assistant", "Library alternative"),
 ];
 
+describe("session tree parent resolution", () => {
+  it("matches the quadratic reference on random graphs", () => {
+    for (let seed = 1; seed <= 400; seed++) {
+      const graphEntries = randomGraph(seed);
+      const byId = new Map(graphEntries.map((item) => [item.id, item]));
+      const expected = new Map(graphEntries.map((item) => [item.id, referenceSafeParentId(item, byId)]));
+
+      const actual = buildSessionTreeIndex(graphEntries, null).parentById;
+
+      expect([...actual]).toEqual([...expected]);
+    }
+  });
+});
+
 describe("session tree projection", () => {
   it("projects branch controls from exact active parent-child edges", () => {
     const state = new SessionEntryState();
@@ -128,4 +142,41 @@ function entry(
     timestamp: new Date(timestamp).toISOString(),
     message: { role, content: text, timestamp },
   };
+}
+
+function randomGraph(seed: number): RpcSessionEntry[] {
+  let state = seed >>> 0;
+  const random = (limit: number): number => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state % limit;
+  };
+  const size = random(41);
+  const ids = Array.from({ length: size }, (_, index) => `e${index}`);
+  return ids.map((id) => {
+    const choice = random(5);
+    const parentId =
+      choice === 0 ? null
+      : choice === 1 ? id
+      : choice === 2 ? "missing"
+      : (ids[random(size)] ?? null);
+    return { type: "message", id, parentId, timestamp: "2024-01-01T00:00:00.000Z" };
+  });
+}
+
+function referenceSafeParentId(
+  item: RpcSessionEntry,
+  entriesById: ReadonlyMap<string, RpcSessionEntry>,
+): string | null {
+  const parentId = item.parentId;
+  if (!parentId || !entriesById.has(parentId) || parentId === item.id) return null;
+
+  const seen = new Set([item.id]);
+  let currentId: string | null = parentId;
+  while (currentId) {
+    if (seen.has(currentId)) return null;
+    seen.add(currentId);
+    const current = entriesById.get(currentId);
+    currentId = current?.parentId && entriesById.has(current.parentId) ? current.parentId : null;
+  }
+  return parentId;
 }

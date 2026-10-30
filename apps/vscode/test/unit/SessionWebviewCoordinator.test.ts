@@ -70,6 +70,7 @@ describe("Session Webview coordination", () => {
       onDidChange: registryEvents.change.event,
       onDidToast: registryEvents.toast.event,
       onDidSetComposerText: registryEvents.composer.event,
+      setPinnedSessions: vi.fn(),
     };
     const coordinator = new SessionWebviewCoordinator(
       registry as never,
@@ -118,6 +119,7 @@ describe("Session Webview coordination", () => {
       onDidChange: registryEvents.change.event,
       onDidToast: registryEvents.toast.event,
       onDidSetComposerText: registryEvents.composer.event,
+      setPinnedSessions: vi.fn(),
     };
     const coordinator = new SessionWebviewCoordinator(
       registry as never,

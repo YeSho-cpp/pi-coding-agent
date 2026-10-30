@@ -18,6 +18,7 @@ import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
 import { readPiSessionMetadata, sessionCwdInWorkspace, workspacePiSessionRoots, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
+import { IdleSessionReaper, isIdleSession, type ReapCandidate } from "./IdleSessionReaper.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { isInsideDirectory, planNewSessionDirectories, type PlannedNewSessionDirectory } from "./NewSessionDirectories.js";
 import { SessionPersistence } from "./SessionPersistence.js";
@@ -62,6 +63,14 @@ export class SessionRegistry implements vscode.Disposable {
   readonly #setComposerTextEmitter = new vscode.EventEmitter<{ sessionId: string; text: string }>();
   readonly #lastStatuses = new Map<string, SessionRuntimeStatus>();
   readonly #lastPendingUiCounts = new Map<string, number>();
+  #sessionRunningContext: boolean | undefined;
+  readonly #lastActiveAt = new Map<string, number>();
+  #pinnedSessions: () => Iterable<string> = () => [];
+  readonly #reaper = new IdleSessionReaper({
+    idleMs: () => Math.max(0, vscode.workspace.getConfiguration("piAgent").get<number>("session.idleStopMinutes", 30)) * 60_000,
+    candidates: () => this.#reapCandidates(),
+    stop: (sessionId) => this.#stopIfIdle(sessionId),
+  });
   readonly #temporarySessionIds = new Set<string>();
   readonly #retainedProvisionalSessionIds = new Set<string>();
   readonly #startJobs = new Map<string, Promise<void>>();
@@ -110,6 +119,11 @@ export class SessionRegistry implements vscode.Disposable {
 
   get activeSessionId(): string | null {
     return this.#activeSessionId;
+  }
+
+  /** Sessions shown outside the sidebar selection (editor tabs); they are never stopped for being idle. */
+  setPinnedSessions(probe: () => Iterable<string>): void {
+    this.#pinnedSessions = probe;
   }
 
   get extensionVersion(): string {
@@ -837,6 +851,7 @@ export class SessionRegistry implements vscode.Disposable {
     if (this.#disposed) return;
     this.#disposed = true;
     if (this.#emitTimer) clearTimeout(this.#emitTimer);
+    this.#reaper.dispose();
     await Promise.allSettled([...this.#runtimes.values()].map((runtime) => runtime.dispose()));
     this.#changeEmitter.dispose();
     this.#toastEmitter.dispose();
@@ -1028,9 +1043,41 @@ export class SessionRegistry implements vscode.Disposable {
     this.#startJobs.set(runtime.id, job);
     try {
       await job;
+      this.#reaper.ensureRunning();
     } finally {
       if (this.#startJobs.get(runtime.id) === job) this.#startJobs.delete(runtime.id);
     }
+  }
+
+  /** Runtimes with a live Pi process that nobody is looking at. In-use sessions restart their idle clock. */
+  #reapCandidates(): ReapCandidate[] {
+    const now = Date.now();
+    const candidates: ReapCandidate[] = [];
+    for (const [id, runtime] of this.#runtimes) {
+      if (!this.#mayReap(id, runtime)) {
+        this.#lastActiveAt.set(id, now);
+        continue;
+      }
+      const lastActiveAt = this.#lastActiveAt.get(id) ?? now;
+      this.#lastActiveAt.set(id, lastActiveAt);
+      candidates.push({ id, lastActiveAt });
+    }
+    return candidates;
+  }
+
+  #mayReap(sessionId: string, runtime: SessionRuntime): boolean {
+    if (runtime.isEphemeral || this.#temporarySessionIds.has(sessionId)) return false;
+    if (this.#forkOperation || this.#startJobs.has(sessionId) || this.#historyJobs.has(sessionId)) return false;
+    if (this.#treeInteractionSessions.has(sessionId) || sessionId === this.#activeSessionId) return false;
+    if ([...this.#pinnedSessions()].includes(sessionId)) return false;
+    return isIdleSession(runtime.view);
+  }
+
+  async #stopIfIdle(sessionId: string): Promise<void> {
+    const runtime = this.#runtimes.get(sessionId);
+    if (!runtime || !this.#mayReap(sessionId, runtime)) return;
+    this.#logger.info(`Stopping idle Pi session ${sessionId}; it restarts when selected or sent a prompt.`);
+    await runtime.stop();
   }
 
   #replaceRuntimeWithFork(
@@ -1163,6 +1210,7 @@ export class SessionRegistry implements vscode.Disposable {
   }
 
   #handleRuntimeChange(runtime: SessionRuntime): void {
+    this.#lastActiveAt.set(runtime.id, Date.now());
     const view = runtime.view;
     const previous = this.#records.get(runtime.id);
     const previousStatus = this.#lastStatuses.get(runtime.id);
@@ -1198,7 +1246,8 @@ export class SessionRegistry implements vscode.Disposable {
       });
       void this.#persist();
     }
-    if (runtime.id === this.#activeSessionId) {
+    if (runtime.id === this.#activeSessionId && this.#sessionRunningContext !== view.isStreaming) {
+      this.#sessionRunningContext = view.isStreaming;
       void vscode.commands.executeCommand("setContext", "piAgent.sessionRunning", view.isStreaming);
     }
     this.#scheduleChange();
@@ -1275,6 +1324,7 @@ export class SessionRegistry implements vscode.Disposable {
     this.#retainedProvisionalSessionIds.delete(sessionId);
     this.#lastStatuses.delete(sessionId);
     this.#lastPendingUiCounts.delete(sessionId);
+    this.#lastActiveAt.delete(sessionId);
     this.#startJobs.delete(sessionId);
     this.#historyJobs.delete(sessionId);
     this.#treeInteractionSessions.delete(sessionId);

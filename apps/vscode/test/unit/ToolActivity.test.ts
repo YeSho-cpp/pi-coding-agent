@@ -15,6 +15,14 @@ import ToolActivity from "../../src/webview/features/conversation/ToolActivity.s
  * state and are not covered here.
  */
 describe("ToolActivity sections", () => {
+  it("renders no body while closed, so a long session does not build every card up front", () => {
+    const closed = render(ToolActivity, { props: { activity: activity(bound({ args: { path: "a.ts" }, output: "ok" })) } }).body;
+
+    expect(closed).not.toContain("tool-body");
+    expect(closed).not.toContain("tool-output");
+    expect(closed).toContain('data-state="closed"');
+  });
+
   it("offers every section the call has content for", () => {
     const card = renderCard(bound({ diff: "--- a\n+++ b", args: { path: "a.ts" }, output: "ok" }));
 
@@ -110,8 +118,9 @@ describe("ToolActivity sections", () => {
   });
 });
 
+/** Cards render their body only once opened, so the markup under test is that of an opened card. */
 function renderCard(tool: ToolCallView): string {
-  return render(ToolActivity, { props: { activity: activity(tool) } }).body;
+  return render(ToolActivity, { props: { activity: activity(tool), live: true } }).body;
 }
 
 function tabLabels(card: string): string[] {

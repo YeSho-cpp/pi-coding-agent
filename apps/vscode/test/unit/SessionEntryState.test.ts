@@ -3,6 +3,34 @@ import { describe, expect, it } from "vitest";
 
 import { SessionEntryPathError, SessionEntryState } from "../../src/extension/sessions/SessionEntryState.js";
 
+describe("SessionEntryState parent resolution", () => {
+  it("matches the quadratic reference on random graphs", () => {
+    for (let seed = 1; seed <= 400; seed++) {
+      const entries = randomGraph(seed);
+      const nodes = new Map(entries.map((entry) => [entry.id, { id: entry.id, parentId: entry.parentId }]));
+      const expected = new Map(entries.map((entry) => [entry.id, referenceValidParentId(entry.id, nodes)]));
+
+      const actual = new SessionEntryState().replace(entries, null).index.parentById;
+
+      expect([...actual]).toEqual([...expected]);
+    }
+  });
+
+  it("indexes a 20000-entry linear chain in linear time", () => {
+    const size = 20000;
+    const entries = Array.from({ length: size }, (_, i) => message(`n${i}`, i === 0 ? null : `n${i - 1}`, "user", "x"));
+
+    const started = performance.now();
+    const index = new SessionEntryState().replace(entries, `n${size - 1}`).index;
+    const elapsed = performance.now() - started;
+
+    expect(index.parentById.get("n0")).toBeNull();
+    expect(index.parentById.get(`n${size - 1}`)).toBe(`n${size - 2}`);
+    expect(index.activePath).toHaveLength(size);
+    expect(elapsed).toBeLessThan(2000);
+  });
+});
+
 describe("SessionEntryState", () => {
   it("selects the complete active path and retains only content-free tree nodes", () => {
     const state = new SessionEntryState();
@@ -106,4 +134,40 @@ function message(
 
 function entry(id: string, parentId: string | null, type: string): RpcSessionEntry {
   return { type, id, parentId };
+}
+
+function randomGraph(seed: number): RpcSessionEntry[] {
+  let state = seed >>> 0;
+  const random = (limit: number): number => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state % limit;
+  };
+  const size = random(41);
+  const ids = Array.from({ length: size }, (_, index) => `e${index}`);
+  return ids.map((id) => {
+    const choice = random(5);
+    const parentId =
+      choice === 0 ? null
+      : choice === 1 ? id
+      : choice === 2 ? "missing"
+      : (ids[random(size)] ?? null);
+    return { type: "message", id, parentId, timestamp: "2024-01-01T00:00:00.000Z" };
+  });
+}
+
+function referenceValidParentId(
+  id: string,
+  nodes: ReadonlyMap<string, { id: string; parentId: string | null }>,
+): string | null {
+  const node = nodes.get(id);
+  if (!node || node.parentId === null || !nodes.has(node.parentId) || node.parentId === node.id) return null;
+
+  const seen = new Set([node.id]);
+  let currentId: string | null = node.parentId;
+  while (currentId !== null) {
+    if (seen.has(currentId)) return null;
+    seen.add(currentId);
+    currentId = nodes.get(currentId)?.parentId ?? null;
+  }
+  return node.parentId;
 }

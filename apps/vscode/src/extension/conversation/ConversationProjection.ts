@@ -766,12 +766,16 @@ export class ConversationProjection {
   #refreshBranchControls(branchEdges: readonly ActiveBranchEdge[]): void {
     const controls = new Map(branchEdges.map((edge) => [branchControlId(edge), branchControlView(edge)]));
     this.#store.mapItems((item) => {
-      if (item.type === "branchControl") return controls.get(item.id) ?? item;
+      if (item.type === "branchControl") return refreshedBranchControl(item, controls);
       if (item.type !== "turn") return item;
-      return {
-        ...item,
-        items: item.items.map((turnItem) => turnItem.type === "branchControl" ? controls.get(turnItem.id) ?? turnItem : turnItem),
-      };
+      let changed = false;
+      const items = item.items.map((turnItem) => {
+        if (turnItem.type !== "branchControl") return turnItem;
+        const refreshed = refreshedBranchControl(turnItem, controls);
+        if (refreshed !== turnItem) changed = true;
+        return refreshed;
+      });
+      return changed ? { ...item, items } : item;
     });
   }
 
@@ -921,14 +925,13 @@ export class ConversationProjection {
 
   #removeCacheMissNotices(): void {
     if (!this.#conversationItems().some((item) => item.id.startsWith(CACHE_MISS_NOTICE_ID_PREFIX))) return;
-    this.#store.mapItems((item) => item.type === "turn"
-      ? {
-          ...item,
-          items: item.items.filter((turnItem) => (
-            turnItem.type !== "notice" || !turnItem.id.startsWith(CACHE_MISS_NOTICE_ID_PREFIX)
-          )),
-        }
-      : item);
+    this.#store.mapItems((item) => {
+      if (item.type !== "turn") return item;
+      const items = item.items.filter((turnItem) => (
+        turnItem.type !== "notice" || !turnItem.id.startsWith(CACHE_MISS_NOTICE_ID_PREFIX)
+      ));
+      return items.length === item.items.length ? item : { ...item, items };
+    });
     this.#markContentChanged();
   }
 
@@ -1087,6 +1090,16 @@ function branchControlView(edge: ActiveBranchEdge): BranchControlView {
     activeChildEntryId: edge.activeChildEntryId,
     pathCount: edge.pathCount,
   };
+}
+
+/** Keeps the existing object when nothing changed: the Webview delta compares items by reference. */
+function refreshedBranchControl(current: BranchControlView, controls: ReadonlyMap<string, BranchControlView>): BranchControlView {
+  const next = controls.get(current.id);
+  if (!next) return current;
+  const same = next.branchPointId === current.branchPointId
+    && next.activeChildEntryId === current.activeChildEntryId
+    && next.pathCount === current.pathCount;
+  return same ? current : next;
 }
 
 function branchControlId(edge: ActiveBranchEdge): string {
