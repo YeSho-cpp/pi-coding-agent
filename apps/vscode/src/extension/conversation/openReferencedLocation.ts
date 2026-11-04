@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { resolveReferencePath, startsAtHome } from "../_shared/paths/expandHome.js";
 import type { WorkspaceFileSearchOptions } from "../fd/fdArgs.js";
 import { WorkspaceFileSearch } from "../fd/WorkspaceFileSearch.js";
+import { isRelativeReference, referenceCandidates } from "./sessionPathEvidence.js";
 
 export interface ReferencedLocation {
   path: string;
@@ -23,29 +24,38 @@ const FALLBACK_SEARCH_OPTIONS: WorkspaceFileSearchOptions = {
   followSymlinks: false,
 };
 
+/** Candidates are looked up this many at a time, so a slow (remote) file system costs a few round trips. */
+const STAT_BATCH = 16;
+
 /**
  * Opens a referenced file and applies its 1-based line/column/endLine.
  * `~/x` and `$HOME/x` mean the home directory, as they do to Pi, so a reference the agent wrote
  * that way opens the real file instead of one under the session's working directory.
  * A directory reference reveals the folder in the Explorer instead of failing to open
- * as a document. When the path does not exist (bare filename, stale path), jumps to the
- * best fd match in the workspace; with no match, the original VS Code open error
- * surfaces unchanged.
+ * as a document.
+ *
+ * A relative reference that does not exist under the session's directory is first looked up
+ * where the session's own tool calls were working (`sessionPaths`, newest first): the agent may
+ * have read another repository and cited its files relative to that one. Only then does it jump
+ * to the best fd match in the workspace (bare filename, stale path); with no match, the
+ * original VS Code open error surfaces unchanged.
  */
 export async function openReferencedLocation(
   reference: ReferencedLocation,
   basePath?: string,
+  sessionPaths?: () => readonly string[],
 ): Promise<void> {
   const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const fsPath = resolveReferencePath(reference.path, basePath ?? workspacePath ?? "");
   const uri = vscode.Uri.file(fsPath);
 
   const stat = await statOrNull(uri);
-  if (stat && stat.type & vscode.FileType.Directory) {
-    await vscode.commands.executeCommand("revealInExplorer", uri);
-    return;
-  }
-  if (stat) return openInEditor(uri, reference);
+  if (stat) return openFound(uri, stat, reference);
+
+  // `~` and absolute references say where they point, so the session's history cannot improve them.
+  const known = sessionPaths && isRelativeReference(reference.path) ? sessionPaths() : [];
+  const elsewhere = await findAmong(referenceCandidates(reference.path, known), fsPath);
+  if (elsewhere) return openFound(elsewhere.uri, elsewhere.stat, reference);
 
   // The workspace search only knows workspace-relative names, so a home path that is simply
   // missing has nothing to be matched against; the basename search is for stale project paths.
@@ -55,6 +65,29 @@ export async function openReferencedLocation(
   // Nothing plausible matched: open the original path anyway so VS Code's
   // "nonexistent file" error is what the user sees.
   return openInEditor(uri, reference);
+}
+
+async function openFound(uri: vscode.Uri, stat: vscode.FileStat, reference: ReferencedLocation): Promise<void> {
+  if (stat.type & vscode.FileType.Directory) {
+    await vscode.commands.executeCommand("revealInExplorer", uri);
+    return;
+  }
+  return openInEditor(uri, reference);
+}
+
+/** The first candidate, in the order given, that exists. `skip` is the path already tried. */
+async function findAmong(
+  candidates: readonly string[],
+  skip: string,
+): Promise<{ uri: vscode.Uri; stat: vscode.FileStat } | undefined> {
+  const pending = candidates.filter((path) => path !== skip);
+  for (let start = 0; start < pending.length; start += STAT_BATCH) {
+    const batch = pending.slice(start, start + STAT_BATCH).map((path) => vscode.Uri.file(path));
+    const stats = await Promise.all(batch.map((candidate) => statOrNull(candidate)));
+    const hit = stats.findIndex((stat) => stat !== undefined);
+    if (hit >= 0) return { uri: batch[hit]!, stat: stats[hit]! };
+  }
+  return undefined;
 }
 
 /**

@@ -22,6 +22,7 @@ import { configurePiExecutable } from "../configuration/configurePiExecutable.js
 import { readConfiguration } from "../configuration/readConfiguration.js";
 import { workspaceUriForPath } from "../configuration/workspaceScope.js";
 import { openReferencedLocation } from "../conversation/openReferencedLocation.js";
+import { sessionToolPaths } from "../conversation/sessionPathEvidence.js";
 import { exportDiagnostics } from "../diagnostics/exportDiagnostics.js";
 import type { DiagnosticLogger } from "../diagnostics/DiagnosticLogger.js";
 import { openFileDiff } from "../file-changes/GitBaseContentProvider.js";
@@ -299,9 +300,16 @@ export class WebviewActionDispatcher {
         });
         return;
       }
-      case "openFile":
-        await openReferencedLocation(message, this.#displayedSession(connection)?.cwd);
+      case "openFile": {
+        const session = this.#displayedSession(connection);
+        // Read lazily: only a reference the session's directory cannot resolve needs the history.
+        await openReferencedLocation(
+          message,
+          session?.cwd,
+          session ? () => sessionToolPaths(session.conversationItems, session.cwd) : undefined,
+        );
         return;
+      }
       case "openDiff": {
         // The Webview sends the path as the tool wrote it, which can be `~/x` or relative to the
         // session; resolving it here uses the session's cwd and this machine's home.

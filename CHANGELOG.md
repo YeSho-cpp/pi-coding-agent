@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.36] - 2026-11-04
+
+### Fixed
+
+- **File chips for another project's files now open.** When the agent read files from a different
+  project (for example `cd ../DeepEP && sed -n 1,120p tests/elastic/test_ep.py` from a session
+  in `mori`) and cited them relative to that project, clicking `tests/elastic/test_ep.py:65`
+  failed with "cannot open file:///…/mori/tests/elastic/test_ep.py": the path was only ever
+  tried under the session's working directory. A reference that is missing there is now looked
+  up where the session's own tool calls were working (the directories the agent changed into,
+  the paths its tools named, and the folders above them) before the workspace search. Bare file
+  names (`test_ep.py:483`) and folders resolve the same way. When several projects contain the
+  file, the one used most recently wins. `~`, absolute and `../` references are left as written.
+
 ## [1.1.35] - 2026-11-04
 
 ### Fixed

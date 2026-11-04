@@ -1,11 +1,11 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const openers = vi.hoisted(() => ({
-  openReferencedLocation: vi.fn(() => Promise.resolve()),
+  openReferencedLocation: vi.fn<(...args: unknown[]) => Promise<void>>(() => Promise.resolve()),
   openEditBaseDiff: vi.fn(() => Promise.resolve(true)),
   openFileDiff: vi.fn(() => Promise.resolve()),
   fileIconDataUri: vi.fn<(name: string, isDirectory: boolean) => string>(() => "data:image/svg+xml;base64,AA=="),
@@ -41,10 +41,10 @@ const { WebviewActionDispatcher } = await import("../../src/extension/webview-ho
 
 const CWD = "/work/project";
 
-function setup() {
+function setup(conversationItems: unknown[] = []) {
   const registry = {
     hasSession: vi.fn(() => true),
-    sessionView: vi.fn(() => ({ cwd: CWD, attachmentLimits: { maxImageBytes: 1024 } })),
+    sessionView: vi.fn(() => ({ cwd: CWD, conversationItems, attachmentLimits: { maxImageBytes: 1024 } })),
   };
   const dispatcher = new WebviewActionDispatcher({
     registry: registry as never,
@@ -125,7 +125,25 @@ describe("openFile", () => {
     expect(openers.openReferencedLocation).toHaveBeenCalledWith(
       expect.objectContaining({ path: "~/.cache/mori-rmac/upstream/issue.md", line: 4 }),
       CWD,
+      expect.any(Function),
     );
+  });
+
+  it("lets the opener read where the session's tool calls worked", async () => {
+    const bash = (command: string) => ({
+      id: command,
+      type: "tool",
+      timestamp: 0,
+      tool: { state: "bound", id: command, name: "bash", label: command, status: "complete", isError: false, startedAt: 0, args: { command } },
+    });
+    const { send } = setup([
+      { id: "turn", type: "turn", status: "completed", startedAt: 0, items: [bash("cd /work/HPN/DeepEP && sed -n 1,20p tests/elastic/test_ep.py")] },
+    ]);
+
+    await send({ type: "openFile", path: "tests/elastic/test_ep.py", line: 65 });
+
+    const sessionPaths = openers.openReferencedLocation.mock.calls[0]?.[2] as () => string[];
+    expect(sessionPaths()).toContain(resolve("/work/HPN/DeepEP/tests/elastic/test_ep.py"));
   });
 });
 

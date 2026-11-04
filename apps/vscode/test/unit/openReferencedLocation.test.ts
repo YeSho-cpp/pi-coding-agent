@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const vscodeMock = vi.hoisted(() => {
   class Position {
@@ -37,7 +37,7 @@ const vscodeMock = vi.hoisted(() => {
     workspace: {
       workspaceFolders: [{ uri: { fsPath: "/workspace" } }],
       fs: {
-        stat: vi.fn(() => Promise.resolve({})),
+        stat: vi.fn<(uri: { fsPath: string }) => Promise<{ type?: number }>>(() => Promise.resolve({})),
       },
       openTextDocument: vi.fn(() => Promise.resolve(document)),
     },
@@ -82,6 +82,7 @@ vi.mock("../../src/extension/fd/WorkspaceFileSearch.js", () => ({
 const { openReferencedLocation } = await import(
   "../../src/extension/conversation/openReferencedLocation.js"
 );
+const { sessionToolPaths } = await import("../../src/extension/conversation/sessionPathEvidence.js");
 
 describe("openReferencedLocation", () => {
   beforeEach(() => {
@@ -257,5 +258,164 @@ describe("openReferencedLocation", () => {
     await expect(
       openReferencedLocation({ path: "src/file.ts" }, resolve("workspace")),
     ).rejects.toThrow("Unable to resolve nonexistent file");
+  });
+
+  describe("when the agent worked in another repository", () => {
+    const sessionCwd = resolve("/work/HPN/mori");
+    const deepEp = resolve("/work/HPN/DeepEP");
+    const inDeepEp = (path: string): string => resolve(deepEp, path);
+    // Pi was run in mori but read DeepEP through `cd`, then cited DeepEP files relative to DeepEP.
+    const toolPaths = (): string[] => sessionToolPaths(
+      [{
+        id: "turn",
+        type: "turn",
+        status: "completed",
+        startedAt: 0,
+        items: [
+          bashTool("cd /work/HPN/DeepEP && sed -n 1,120p tests/elastic/test_ep.py"),
+          bashTool("cd /work/HPN/DeepEP && sed -n 88,175p csrc/kernels/elastic/dispatch.hpp"),
+        ],
+      }],
+      sessionCwd,
+    );
+    let existing: Map<string, number>;
+
+    function bashTool(command: string) {
+      return {
+        id: command,
+        type: "tool" as const,
+        timestamp: 0,
+        tool: {
+          state: "bound" as const,
+          id: command,
+          name: "bash",
+          label: command,
+          status: "complete" as const,
+          isError: false,
+          startedAt: 0,
+          args: { command },
+        },
+      };
+    }
+
+    const openedPath = (): string | undefined =>
+      (vscodeMock.workspace.openTextDocument.mock.calls[0] as unknown as [{ fsPath: string }] | undefined)?.[0].fsPath;
+
+    beforeEach(() => {
+      existing = new Map([
+        [inDeepEp("tests/elastic/test_ep.py"), 1],
+        [inDeepEp("csrc/kernels/elastic/dispatch.hpp"), 1],
+        [inDeepEp("csrc/kernels/elastic"), 2],
+      ]);
+      vscodeMock.workspace.fs.stat.mockImplementation((uri) => {
+        const type = existing.get(uri.fsPath);
+        return type === undefined ? Promise.reject(new Error("ENOENT")) : Promise.resolve({ type });
+      });
+    });
+
+    afterEach(() => {
+      vscodeMock.workspace.fs.stat.mockImplementation(() => Promise.resolve({}));
+    });
+
+    it("opens the file the agent read in the other repository at the cited line", async () => {
+      await openReferencedLocation({ path: "tests/elastic/test_ep.py", line: 65 }, sessionCwd, toolPaths);
+
+      expect(openedPath()).toBe(inDeepEp("tests/elastic/test_ep.py"));
+      expect(vscodeMock.editor.selection?.anchor).toMatchObject({ line: 64, character: 0 });
+      expect(searchMock.search).not.toHaveBeenCalled();
+    });
+
+    it("opens a bare file name the same way", async () => {
+      await openReferencedLocation({ path: "test_ep.py", line: 483 }, sessionCwd, toolPaths);
+
+      expect(openedPath()).toBe(inDeepEp("tests/elastic/test_ep.py"));
+    });
+
+    it("opens a header cited relative to the other repository", async () => {
+      await openReferencedLocation({ path: "csrc/kernels/elastic/dispatch.hpp", line: 303 }, sessionCwd, toolPaths);
+
+      expect(openedPath()).toBe(inDeepEp("csrc/kernels/elastic/dispatch.hpp"));
+      expect(vscodeMock.editor.selection?.anchor).toMatchObject({ line: 302 });
+    });
+
+    it("finds a file the agent never opened through any other path it used in that repository", async () => {
+      existing.set(inDeepEp("deep_ep/buffer.py"), 1);
+
+      await openReferencedLocation({ path: "deep_ep/buffer.py" }, sessionCwd, () => [inDeepEp("tests/elastic/test_ep.py")]);
+
+      expect(openedPath()).toBe(inDeepEp("deep_ep/buffer.py"));
+    });
+
+    it("reveals a folder of the other repository in the Explorer", async () => {
+      await openReferencedLocation({ path: "csrc/kernels/elastic/" }, sessionCwd, toolPaths);
+
+      expect(vscodeMock.commands.executeCommand).toHaveBeenCalledWith(
+        "revealInExplorer",
+        expect.objectContaining({ fsPath: inDeepEp("csrc/kernels/elastic") }),
+      );
+      expect(vscodeMock.workspace.openTextDocument).not.toHaveBeenCalled();
+    });
+
+    it("keeps preferring the session's own directory when the file exists there", async () => {
+      existing.set(resolve(sessionCwd, "tests/elastic/test_ep.py"), 1);
+      const history = vi.fn(toolPaths);
+
+      await openReferencedLocation({ path: "tests/elastic/test_ep.py" }, sessionCwd, history);
+
+      expect(openedPath()).toBe(resolve(sessionCwd, "tests/elastic/test_ep.py"));
+      expect(history).not.toHaveBeenCalled();
+    });
+
+    it("opens the most recently used repository when several have the file", async () => {
+      const other = resolve("/work/HPN/MoonEP");
+      existing.set(resolve(other, "tests/elastic/test_ep.py"), 1);
+      const newestFirst = (): string[] => [resolve(other, "tests/elastic/test_ep.py"), inDeepEp("tests/elastic/test_ep.py")];
+
+      await openReferencedLocation({ path: "tests/elastic/test_ep.py" }, sessionCwd, newestFirst);
+
+      expect(openedPath()).toBe(resolve(other, "tests/elastic/test_ep.py"));
+    });
+
+    it("falls back to the workspace search when nothing the session used has the file", async () => {
+      searchMock.search.mockResolvedValue([{ path: "docs/guide.md", isDirectory: false, score: 1 }]);
+
+      await openReferencedLocation({ path: "guide.md" }, sessionCwd, toolPaths);
+
+      expect(searchMock.search).toHaveBeenCalledTimes(1);
+      expect(openedPath()).toBe(resolve(sessionCwd, "docs/guide.md"));
+    });
+
+    it("surfaces the original open error when neither the session nor the workspace has the file", async () => {
+      searchMock.search.mockResolvedValue([]);
+      vscodeMock.workspace.openTextDocument.mockRejectedValueOnce(new Error("Unable to resolve nonexistent file"));
+
+      await expect(openReferencedLocation({ path: "tests/nowhere.py" }, sessionCwd, toolPaths)).rejects.toThrow(
+        "Unable to resolve nonexistent file",
+      );
+
+      expect(vscodeMock.Uri.file).toHaveBeenCalledWith(resolve(sessionCwd, "tests/nowhere.py"));
+    });
+
+    it("does not read the session's history for a home or absolute reference", async () => {
+      existing.clear();
+      searchMock.search.mockResolvedValue([]);
+      const history = vi.fn(toolPaths);
+
+      await openReferencedLocation({ path: "~/notes/todo.md" }, sessionCwd, history);
+      await openReferencedLocation({ path: resolve("/old/machine/test_ep.py") }, sessionCwd, history);
+
+      expect(history).not.toHaveBeenCalled();
+    });
+
+    it("checks no candidate twice and none outside the evidence", async () => {
+      existing.clear();
+      searchMock.search.mockResolvedValue([]);
+
+      await openReferencedLocation({ path: "tests/elastic/test_ep.py" }, sessionCwd, toolPaths);
+
+      const asked = vscodeMock.workspace.fs.stat.mock.calls.map(([uri]) => uri.fsPath);
+      expect(new Set(asked).size).toBe(asked.length);
+      expect(asked[0]).toBe(resolve(sessionCwd, "tests/elastic/test_ep.py"));
+    });
   });
 });
