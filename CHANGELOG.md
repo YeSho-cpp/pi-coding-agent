@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.35] - 2026-11-04
+
+### Fixed
+
+- **Files the agent names with `~` now open.** Clicking a file chip such as
+  `~/.cache/mori-rmac/upstream/issue.md` failed with "cannot open file:///<project>/~/.cache/…":
+  `~` was not recognised as the home directory, so the project folder was put in front of it.
+  The host now resolves paths the way Pi does: `~` and `~/…` (and the shell spellings `$HOME/…`
+  and `${HOME}/…`) are the home directory, absolute paths stay as they are, and everything else
+  is relative to the session's working directory. This covers file links, the file chip and
+  "Open file" button on tool rows, the changed-files card's diff, Markdown images, and folder
+  icons. `~name/…` is not expanded, as in Pi.
+- A home-directory file that does not exist now reports that, instead of opening an unrelated
+  file with the same name found elsewhere in the project.
+- Diffs of files that a tool addressed with `~/` open the right file on both sides.
+- **The welcome page's history no longer drops your newest sessions.** Only the first 30 session
+  files of a project were read, and the folder lists them oldest first, so a project with more
+  than 30 sessions showed its oldest and hid its latest. It now reads the 30 most recently
+  modified files across all open folders.
+- **Renaming a session on the welcome page works from the keyboard.** The row swallowed every
+  Space and Enter pressed inside it, so a name could not contain a space and confirming with
+  Enter also opened the session. Keys pressed in the rename box or on the row's "…" button now
+  stay with them; Enter or Space on the row itself still opens it.
+
+### Changed
+
+- One resolver now decides what `~` means for file references, `PI_CODING_AGENT_DIR`, session
+  directories and the edit-base snapshot, replacing three private copies. The snapshot copy used
+  to turn `~name` into a path under the home directory; it no longer does. A directory that is
+  literally named `~` is reached with `./~/…`, as in a shell.
+
 ## [1.1.34] - 2026-10-29
 
 ### Changed

@@ -8,7 +8,7 @@
   const COLLAPSED_ROWS = 5;
   const SLIDE_MS = 170;
 
-  let { files, cwd }: { files: TurnChangeFile[]; cwd: string } = $props();
+  let { files }: { files: TurnChangeFile[] } = $props();
   /** The whole card folds to its header line; `expanded` only reaches the rows past `COLLAPSED_ROWS`. */
   let open = $state(false);
   let expanded = $state(false);
@@ -36,13 +36,9 @@
     return parts.at(-1) || path;
   }
 
-  function isAbsolutePath(path: string): boolean {
-    return path.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith("\\\\");
-  }
-
+  /** The host resolves the path as the tool wrote it: `~/x`, a relative path, or an absolute one. */
   function openDiff(file: TurnChangeFile): void {
-    const absolute = isAbsolutePath(file.path) ? file.path : `${cwd.replace(/[\\/]+$/, "")}/${file.path}`;
-    postToHost({ type: "openDiff", path: absolute, baseToolCallId: file.firstToolCallId });
+    postToHost({ type: "openDiff", path: file.path, baseToolCallId: file.firstToolCallId });
   }
 </script>
 

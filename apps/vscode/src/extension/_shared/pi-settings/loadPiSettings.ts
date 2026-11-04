@@ -3,6 +3,8 @@ import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
+import { expandHome } from "../paths/expandHome.js";
+
 const TRUST_REQUIRING_PROJECT_ENTRIES = [
   "settings.json",
   "extensions",
@@ -75,12 +77,7 @@ export function resolvePiAgentDirectory(
   const configured = environment.PI_CODING_AGENT_DIR?.trim();
   if (!configured) return join(homeDirectory, ".pi", "agent");
 
-  const expanded = configured === "~"
-    ? homeDirectory
-    : configured.startsWith("~/") || configured.startsWith("~\\")
-      ? join(homeDirectory, configured.slice(2))
-      : configured;
-  const nativePath = normalizeWindowsShellPath(expanded);
+  const nativePath = normalizeWindowsShellPath(expandHome(configured, { homeDirectory }));
   return isAbsolute(nativePath) ? resolve(nativePath) : resolve(cwd, nativePath);
 }
 

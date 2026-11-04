@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { postToHost } from "../../src/webview/bridge/vscodeBridge.js";
 import TurnChangesStrip from "../../src/webview/features/conversation/TurnChangesStrip.svelte";
 import type { TurnChangeFile } from "../../src/webview/features/conversation/turnChanges.js";
 
@@ -57,7 +58,7 @@ async function clickHeader(): Promise<void> {
 
 describe("TurnChangesStrip", () => {
   it("starts folded to its summary line", () => {
-    render(TurnChangesStrip, { props: { files: files(4), cwd: "/w" } });
+    render(TurnChangesStrip, { props: { files: files(4) } });
 
     expect(header().getAttribute("aria-expanded")).toBe("false");
     expect(header().textContent).toContain("已更改 4 个文件");
@@ -66,7 +67,7 @@ describe("TurnChangesStrip", () => {
   });
 
   it("opens from the header and folds back", async () => {
-    const view = render(TurnChangesStrip, { props: { files: files(4), cwd: "/w" } });
+    const view = render(TurnChangesStrip, { props: { files: files(4) } });
 
     await clickHeader();
     expect(header().getAttribute("aria-expanded")).toBe("true");
@@ -79,7 +80,7 @@ describe("TurnChangesStrip", () => {
   });
 
   it("keeps the separate show-all fold for a long list", async () => {
-    render(TurnChangesStrip, { props: { files: files(7), cwd: "/w" } });
+    render(TurnChangesStrip, { props: { files: files(7) } });
     await clickHeader();
     expect(rows()).toHaveLength(5);
 
@@ -93,10 +94,43 @@ describe("TurnChangesStrip", () => {
   });
 
   it("needs no list toggle when every file fits", async () => {
-    render(TurnChangesStrip, { props: { files: files(5), cwd: "/w" } });
+    render(TurnChangesStrip, { props: { files: files(5) } });
     await clickHeader();
 
     expect(rows()).toHaveLength(5);
     expect(screen.queryByRole("button", { name: /Show all/ })).toBeNull();
+  });
+});
+
+describe("opening a changed file's diff", () => {
+  const sent = () => vi.mocked(postToHost).mock.calls.map(([message]) => message);
+
+  function fileAt(path: string, toolCallId = "tool-1"): TurnChangeFile {
+    return { path, added: 3, removed: 1, firstToolCallId: toolCallId };
+  }
+
+  async function openDiffOf(path: string): Promise<void> {
+    vi.mocked(postToHost).mockClear();
+    render(TurnChangesStrip, { props: { files: [fileAt(path)] } });
+    await clickHeader();
+    await fireEvent.click(rows()[0]!);
+  }
+
+  it.each([
+    "~/.config/tool/settings.json",
+    "src/app.ts",
+    "/etc/hosts",
+    "C:\\work\\app.ts",
+  ])("sends %s exactly as the tool wrote it, for the host to resolve", async (path) => {
+    await openDiffOf(path);
+
+    expect(sent()).toContainEqual({ type: "openDiff", path, baseToolCallId: "tool-1" });
+  });
+
+  it("never puts a working directory in front of a path under the home directory", async () => {
+    await openDiffOf("~/notes/todo.md");
+
+    const [diff] = sent().filter((message) => (message as { type: string }).type === "openDiff") as { path: string }[];
+    expect(diff?.path).toBe("~/notes/todo.md");
   });
 });

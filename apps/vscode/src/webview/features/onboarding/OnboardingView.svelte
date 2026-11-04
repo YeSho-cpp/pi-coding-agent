@@ -151,6 +151,14 @@
     postToHost({ type: "openCatalogSession", path: item.path });
   }
 
+  /** Only a key pressed on the row itself opens it: keys typed in its rename box or pressed on its buttons bubble up to here too. */
+  function onRowKeyDown(event: KeyboardEvent, item: WelcomeItem): void {
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openItem(item);
+  }
+
   function itemKey(item: WelcomeItem): string {
     return item.kind === "live" ? `live:${item.id}` : `catalog:${item.path}`;
   }
@@ -396,7 +404,7 @@
               tabindex="0"
               title={item.kind === "live" ? item.id : item.path}
               onclick={() => openItem(item)}
-              onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItem(item); } }}
+              onkeydown={(e) => onRowKeyDown(e, item)}
             >
               <span class="ob-session-dot" class:live={item.kind === "live" && (item.status === "运行中" || item.status === "需要操作")}></span>
               <span class="ob-session-copy">

@@ -2,6 +2,7 @@ import { open, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, normalize, resolve } from "node:path";
 
+import { expandHome } from "../../_shared/paths/expandHome.js";
 import { loadPiSettings, resolvePiAgentDirectory } from "../../_shared/pi-settings/loadPiSettings.js";
 import {
   findSessionWorkingDirectory,
@@ -270,12 +271,6 @@ function sessionDirArgument(args: string[]): string | undefined {
 function resolveSessionDir(value: string, relativeTo: string): string {
   const expanded = expandHome(value);
   return isAbsolute(expanded) ? expanded : resolve(relativeTo, expanded);
-}
-
-function expandHome(value: string): string {
-  if (value === "~") return homedir();
-  if (value.startsWith("~/") || value.startsWith("~\\")) return join(homedir(), value.slice(2));
-  return value;
 }
 
 function firstJsonLine(text: string): Record<string, unknown> | undefined {

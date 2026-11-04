@@ -1,11 +1,11 @@
 import { homedir } from "node:os";
-import { isAbsolute, resolve } from "node:path";
 
 import * as vscode from "vscode";
 
 import type { HostToWebviewPayload } from "../../shared/bridge/hostToWebview.js";
 import type { WebviewToHostMessage } from "../../shared/bridge/webviewToHost.js";
 import type { ComposerDraftView } from "../../shared/model/composerDraftModel.js";
+import { resolveReferencePath } from "../_shared/paths/expandHome.js";
 import { captureActiveFileReference } from "../composer/mentions/captureActiveFile.js";
 import { captureActiveSelection } from "../composer/mentions/captureSelection.js";
 import { captureContextItems, contextId, pickContextItemsQuickPick } from "../composer/mentions/contextAttachPicker.js";
@@ -303,10 +303,13 @@ export class WebviewActionDispatcher {
         await openReferencedLocation(message, this.#displayedSession(connection)?.cwd);
         return;
       case "openDiff": {
+        // The Webview sends the path as the tool wrote it, which can be `~/x` or relative to the
+        // session; resolving it here uses the session's cwd and this machine's home.
+        const path = resolveReferencePath(message.path, this.#displayedSession(connection)?.cwd ?? "");
         const opened = message.baseToolCallId
-          ? await openEditBaseDiff(message.path, message.baseToolCallId)
+          ? await openEditBaseDiff(path, message.baseToolCallId)
           : false;
-        if (!opened) await openFileDiff(message.path);
+        if (!opened) await openFileDiff(path);
         return;
       }
       case "openExternal": {
@@ -348,8 +351,7 @@ export class WebviewActionDispatcher {
         if (!isDirectory) {
           try {
             const { stat } = await import("node:fs/promises");
-            const base = this.#displayedSession(connection)?.cwd ?? "";
-            const resolved = isAbsolute(message.path) ? message.path : resolve(base, message.path);
+            const resolved = resolveReferencePath(message.path, this.#displayedSession(connection)?.cwd ?? "");
             isDirectory = (await stat(resolved)).isDirectory();
           } catch {
             /* missing path: treat as a file */

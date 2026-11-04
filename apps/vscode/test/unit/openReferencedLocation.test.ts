@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -115,6 +116,60 @@ describe("openReferencedLocation", () => {
     await openReferencedLocation({ path: "src/file.ts" }, sessionCwd);
 
     expect(vscodeMock.Uri.file).toHaveBeenCalledWith(resolve(sessionCwd, "src/file.ts"));
+  });
+
+  it.each(["~/.cache/mori-rmac/upstream/issue.md", "$HOME/.cache/mori-rmac/upstream/issue.md", "${HOME}/.cache/mori-rmac/upstream/issue.md"])(
+    "opens %s from the home directory, never under the session's working directory",
+    async (reference) => {
+      const sessionCwd = resolve("worktrees", "feature");
+
+      await openReferencedLocation({ path: reference }, sessionCwd);
+
+      expect(vscodeMock.Uri.file).toHaveBeenCalledWith(join(homedir(), ".cache/mori-rmac/upstream/issue.md"));
+      expect(vscodeMock.Uri.file).not.toHaveBeenCalledWith(expect.stringContaining(`${sessionCwd}${"/"}~`));
+      expect(vscodeMock.workspace.openTextDocument).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("keeps the line and column of a home-directory reference", async () => {
+    await openReferencedLocation({ path: "~/notes/todo.md", line: 7, column: 3 }, resolve("workspace"));
+
+    expect(vscodeMock.Uri.file).toHaveBeenCalledWith(join(homedir(), "notes/todo.md"));
+    expect(vscodeMock.editor.selection?.anchor).toMatchObject({ line: 6, character: 2 });
+  });
+
+  it("reveals a folder under the home directory in the Explorer", async () => {
+    vscodeMock.workspace.fs.stat.mockResolvedValueOnce({ type: 2 });
+
+    await openReferencedLocation({ path: "~/.cache/mori-rmac/" }, resolve("workspace"));
+
+    expect(vscodeMock.commands.executeCommand).toHaveBeenCalledWith(
+      "revealInExplorer",
+      expect.objectContaining({ fsPath: join(homedir(), ".cache/mori-rmac") + "/" }),
+    );
+  });
+
+  it("does not hunt through the project for a home-directory file that is missing", async () => {
+    vscodeMock.workspace.fs.stat.mockRejectedValueOnce(new Error("ENOENT"));
+    searchMock.search.mockResolvedValue([{ path: "docs/issue.md", isDirectory: false, score: 1 }]);
+    vscodeMock.workspace.openTextDocument.mockRejectedValueOnce(new Error("Unable to resolve nonexistent file"));
+
+    await expect(
+      openReferencedLocation({ path: "~/.cache/mori-rmac/upstream/issue.md" }, resolve("workspace")),
+    ).rejects.toThrow("Unable to resolve nonexistent file");
+
+    expect(searchMock.search).not.toHaveBeenCalled();
+    expect(vscodeMock.Uri.file).not.toHaveBeenCalledWith(expect.stringContaining("docs"));
+  });
+
+  it("still searches the project for a missing relative reference", async () => {
+    vscodeMock.workspace.fs.stat.mockRejectedValueOnce(new Error("ENOENT"));
+    searchMock.search.mockResolvedValue([]);
+    vscodeMock.workspace.openTextDocument.mockRejectedValueOnce(new Error("Unable to resolve nonexistent file"));
+
+    await expect(openReferencedLocation({ path: "docs/issue.md" }, resolve("workspace"))).rejects.toThrow();
+
+    expect(searchMock.search).toHaveBeenCalledTimes(1);
   });
 
   it("positions the editor at the one-based line and column", async () => {

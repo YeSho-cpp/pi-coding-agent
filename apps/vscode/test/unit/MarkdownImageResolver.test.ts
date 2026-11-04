@@ -30,6 +30,23 @@ describe("resolveLocalMarkdownImage", () => {
     expect(literalPercent).toMatchObject({ ok: true, mimeType: "image/png" });
   });
 
+  it("reads an image the agent addressed from the home directory with ~ or $HOME", async () => {
+    const home = await temporaryDirectory();
+    await writeFile(join(home, "shot.png"), png(8, 8));
+    const previous = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    try {
+      const session = await temporaryDirectory();
+      expect(await resolveLocalMarkdownImage("~/shot.png", session, 1024)).toMatchObject({ ok: true, mimeType: "image/png" });
+      expect(await resolveLocalMarkdownImage("$HOME/shot.png", session, 1024)).toMatchObject({ ok: true, mimeType: "image/png" });
+      expect(await resolveLocalMarkdownImage("~/nope.png", session, 1024)).toEqual({ ok: false, reason: "notFound" });
+    } finally {
+      if (previous.HOME === undefined) delete process.env.HOME; else process.env.HOME = previous.HOME;
+      if (previous.USERPROFILE === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = previous.USERPROFILE;
+    }
+  });
+
   it("returns stable failures for absent, oversized, and unsupported files", async () => {
     const directory = await temporaryDirectory();
     await writeFile(join(directory, "large.png"), png(20, 20));

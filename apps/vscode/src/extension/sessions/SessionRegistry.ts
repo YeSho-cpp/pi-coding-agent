@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, access, unlink } from "node:fs/promises";
-import { basename, join, normalize, resolve } from "node:path";
+import { basename, normalize, resolve } from "node:path";
 
 /** Min ms between background welcome/catalog scans (CPU guard). */
 const WELCOME_SCAN_INTERVAL_MS = 30_000;
+/** Session files whose headers the welcome history reads per refresh: the most recently written ones. */
+const CATALOG_FILES_READ = 30;
 
 import type { RpcExtensionUiResponse, StreamingBehavior, ThinkingLevel } from "@frostime/pi-rpc";
 import * as vscode from "vscode";
@@ -18,6 +20,7 @@ import { ProxySecretStore } from "../network/ProxySecretStore.js";
 import { showWindowsToast } from "../notifications/showWindowsToast.js";
 import { readPiSessionMetadata, sessionCwdInWorkspace, workspacePiSessionRoots, type PiSessionCatalogEntry } from "./catalog/SessionCatalog.js";
 import { pickPiSession } from "./catalog/SessionCatalogPicker.js";
+import { newestSessionFiles } from "./catalog/newestFiles.js";
 import { IdleSessionReaper, isIdleSession, type ReapCandidate } from "./IdleSessionReaper.js";
 import { parseLaunchArguments } from "./parseLaunchArguments.js";
 import { isInsideDirectory, planNewSessionDirectories, type PlannedNewSessionDirectory } from "./NewSessionDirectories.js";
@@ -361,17 +364,8 @@ export class SessionRegistry implements vscode.Disposable {
       // no ripgrep over the agent sessions tree (CPU guard).
       try {
         const sessionRoots = [...new Set(folders.flatMap((folder) => workspacePiSessionRoots(folder)))];
-        const { readdir } = await import("node:fs/promises");
-        const files: string[] = [];
-        for (const root of sessionRoots) {
-          try {
-            for (const name of await readdir(root)) {
-              if (name.endsWith(".jsonl")) files.push(join(root, name));
-            }
-          } catch { /* missing dir */ }
-        }
         const entries = await Promise.all(
-          files.slice(0, 30).map((path) => readPiSessionMetadata(path)),
+          (await newestSessionFiles(sessionRoots, CATALOG_FILES_READ)).map((path) => readPiSessionMetadata(path)),
         );
         pushEntries(entries.filter((e): e is PiSessionCatalogEntry => Boolean(e)));
       } catch { /* ignore */ }

@@ -2,6 +2,7 @@ import { basename, isAbsolute, resolve } from "node:path";
 
 import * as vscode from "vscode";
 
+import { resolveReferencePath, startsAtHome } from "../_shared/paths/expandHome.js";
 import type { WorkspaceFileSearchOptions } from "../fd/fdArgs.js";
 import { WorkspaceFileSearch } from "../fd/WorkspaceFileSearch.js";
 
@@ -24,6 +25,8 @@ const FALLBACK_SEARCH_OPTIONS: WorkspaceFileSearchOptions = {
 
 /**
  * Opens a referenced file and applies its 1-based line/column/endLine.
+ * `~/x` and `$HOME/x` mean the home directory, as they do to Pi, so a reference the agent wrote
+ * that way opens the real file instead of one under the session's working directory.
  * A directory reference reveals the folder in the Explorer instead of failing to open
  * as a document. When the path does not exist (bare filename, stale path), jumps to the
  * best fd match in the workspace; with no match, the original VS Code open error
@@ -34,9 +37,7 @@ export async function openReferencedLocation(
   basePath?: string,
 ): Promise<void> {
   const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  const fsPath = isAbsolute(reference.path)
-    ? reference.path
-    : resolve(basePath ?? workspacePath ?? "", reference.path);
+  const fsPath = resolveReferencePath(reference.path, basePath ?? workspacePath ?? "");
   const uri = vscode.Uri.file(fsPath);
 
   const stat = await statOrNull(uri);
@@ -46,7 +47,9 @@ export async function openReferencedLocation(
   }
   if (stat) return openInEditor(uri, reference);
 
-  const match = await findWorkspaceFile(reference.path, basePath ?? workspacePath);
+  // The workspace search only knows workspace-relative names, so a home path that is simply
+  // missing has nothing to be matched against; the basename search is for stale project paths.
+  const match = startsAtHome(reference.path) ? undefined : await findWorkspaceFile(reference.path, basePath ?? workspacePath);
   if (match) return openInEditor(vscode.Uri.file(match), reference);
 
   // Nothing plausible matched: open the original path anyway so VS Code's

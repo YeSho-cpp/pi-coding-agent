@@ -100,7 +100,7 @@
       {/if}
     {/each}
     {#if changes.length > 0}
-      <TurnChangesStrip files={changes} cwd={session.cwd} />
+      <TurnChangesStrip files={changes} />
     {/if}
   </div>
 </section>

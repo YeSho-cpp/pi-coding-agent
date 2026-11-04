@@ -1,8 +1,8 @@
 import { readFile, stat } from "node:fs/promises";
-import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { MarkdownImageLoadResult } from "../../../shared/bridge/hostToWebview.js";
+import { resolveReferencePath } from "../../_shared/paths/expandHome.js";
 import { detectRasterImageMimeType } from "./detectRasterImageMimeType.js";
 
 const URI_SCHEME = /^[a-z][a-z\d+.-]*:/i;
@@ -53,7 +53,7 @@ function localFilePath(source: string, sessionCwd: string): string | null {
       // A literal '%' is legal in a filesystem path even though it is not a
       // complete URI escape sequence.
     }
-    return isAbsolute(decoded) ? decoded : resolve(sessionCwd, decoded);
+    return resolveReferencePath(decoded, sessionCwd);
   } catch {
     return null;
   }

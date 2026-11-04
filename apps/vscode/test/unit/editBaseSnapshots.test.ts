@@ -1,5 +1,5 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createTwoFilesPatch } from "diff";
@@ -25,6 +25,15 @@ describe("resolveEditToolPath", () => {
   it("resolves relative paths against the session cwd and keeps absolute ones", () => {
     expect(resolveEditToolPath("sub/f.txt", "/session")).toBe("/session/sub/f.txt");
     expect(resolveEditToolPath("/abs/f.txt", "/session")).toBe("/abs/f.txt");
+  });
+
+  it("expands ~ and ~/ to the home directory, as Pi's edit tool does", () => {
+    expect(resolveEditToolPath("~/notes/f.txt", "/session")).toBe(join(homedir(), "notes/f.txt"));
+    expect(resolveEditToolPath("~", "/session")).toBe(homedir());
+  });
+
+  it("does not turn ~name into a path under the home directory", () => {
+    expect(resolveEditToolPath("~bob/f.txt", "/session")).toBe("/session/~bob/f.txt");
   });
 });
 
