@@ -31,6 +31,7 @@ function live(id: string, title = `Live ${id}`): SessionSummaryView {
     isEphemeral: false,
     historyStatus: "loaded",
     requiresUserInput: false,
+    updatedAt: Date.now(),
   };
 }
 

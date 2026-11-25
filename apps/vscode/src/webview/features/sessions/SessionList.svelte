@@ -1,5 +1,8 @@
 <script lang="ts">
   import type { SessionSummaryView } from "$shared/model/sessionViewModel";
+  import { untrack } from "svelte";
+
+  import { idsByRecency, sessionAgeLabel } from "./sessionAge";
 
   let {
     sessions,
@@ -18,6 +21,21 @@
     oncreate: () => void;
     onresume: () => void;
   } = $props();
+
+  // Order is fixed when the popover opens: a run settling mid-interaction must not move the row
+  // out from under the pointer. Sessions opened while it stays open fall back to their own time.
+  const openedOrder = untrack(() => idsByRecency(sessions));
+  const ordered = $derived.by(() => {
+    const rank = new Map(openedOrder.map((id, index) => [id, index]));
+    return [...sessions].sort((a, b) => {
+      const left = rank.get(a.id);
+      const right = rank.get(b.id);
+      if (left !== undefined && right !== undefined) return left - right;
+      if (left !== undefined) return -1;
+      if (right !== undefined) return 1;
+      return b.updatedAt - a.updatedAt;
+    });
+  });
 
   function runtimeStatusLabel(session: SessionSummaryView): string {
     if (session.requiresUserInput) return "Action required";
@@ -43,7 +61,8 @@
 <div class="session-list-panel" role="dialog" aria-label="Pi Coding Agent sessions">
   <div class="session-list-heading">Sessions</div>
   <div class="session-list-items" role="listbox" aria-label="Open sessions">
-    {#each sessions as session (session.id)}
+    {#each ordered as session (session.id)}
+      {@const age = sessionAgeLabel(session)}
       <div class="session-list-item" class:active={session.id === activeId}>
         <button
           class="session-list-select"
@@ -73,6 +92,7 @@
         >
           <span class="codicon codicon-layout" aria-hidden="true"></span>
         </button>
+        {#if age}<span class="session-list-age" aria-hidden="true">{age}</span>{/if}
         <button class="session-list-close" type="button" aria-label={`Close ${session.title}`} title="Close session" onclick={() => onclose(session.id)}>
           <span class="codicon codicon-close" aria-hidden="true"></span>
         </button>

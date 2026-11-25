@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.37] - 2026-11-24
+
+### Fixed
+
+- **Reopening a large session no longer lands on an empty conversation.** A history over 8 MiB was
+  skipped when the session opened, announced by a one-line notice that offered no way to load it;
+  the only entry point was the `…` menu. Opening or selecting a session from the list, the welcome
+  page or Resume now loads its history whatever its size. A session restored automatically when the
+  window opens still stays under the size cap; for that case the conversation shows a **加载历史**
+  card with a button, and a failed load shows **重试**. Clicking load right after opening also wins
+  over an automatic load that had already decided to skip, instead of being dropped.
+
+### Added
+
+- **The session list shows when each session was last used.** Rows carry a compact right-aligned
+  age — `now`, `12m`, `3h`, `2d`, and from 30 days on the date (`9/5`, or `2024/9/5` in an earlier
+  year) — and the list opens most recently used first. A running session, or one waiting for your
+  input, reads `now`. The age gives way to the row's open/close buttons on hover and keyboard
+  focus, so the title keeps its width, and the order is fixed while the list is open so rows do not
+  move under the pointer.
+
 ## [1.1.36] - 2026-11-04
 
 ### Fixed

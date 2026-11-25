@@ -732,7 +732,6 @@ export class SessionRuntime {
     try {
       if (!force && (await stat(sessionFile)).size > MAX_AUTO_HISTORY_LOAD_BYTES) {
         this.#viewState.setHistoryStatus("deferred");
-        this.#conversation.appendNotice("Conversation history is large and was not loaded automatically.", "info");
         this.#notifyChange();
         return;
       }

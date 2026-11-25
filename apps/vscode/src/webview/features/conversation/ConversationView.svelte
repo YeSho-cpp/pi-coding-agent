@@ -11,6 +11,8 @@
   import CustomBlock from "./CustomBlock.svelte";
   import ConversationFind from "./find/ConversationFind.svelte";
   import { isFindShortcut } from "./find/findInConversation";
+  import HistoryNotLoaded from "./HistoryNotLoaded.svelte";
+  import { needsHistoryLoad } from "./historyGate";
   import SessionNotice from "./SessionNotice.svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
 
@@ -114,17 +116,10 @@
 <div class="conversation-frame">
   <div class="conversation" bind:this={scroller} onscroll={handleScroll}>
     <div class="conversation-inner" bind:this={content}>
-      {#if session.conversationItems.length === 0}
-        <div class="conversation-empty conversation-empty-plain" role="status">
-          {#if session.historyStatus === "loading" || session.historyStatus === "queued" || session.status === "starting" || session.status === "queued"}
-            <p class="empty-title">正在加载会话…</p>
-            <p class="empty-hint">从磁盘恢复 Pi 会话历史。</p>
-          {:else}
-            <p class="empty-title">开始对话</p>
-            <p class="empty-hint">让 Pi 检查代码、修改文件、执行命令，或解释当前项目。</p>
-          {/if}
-        </div>
-      {:else}
+      {#if needsHistoryLoad(session)}
+        <HistoryNotLoaded {session} />
+      {/if}
+      {#if session.conversationItems.length > 0}
         {#each session.conversationItems as item (item.id)}
           {#if item.type === "turn"}
             <AgentTurn turn={item} {session} />
@@ -140,6 +135,16 @@
             <SessionNotice notice={item} />
           {/if}
         {/each}
+      {:else if !needsHistoryLoad(session)}
+        <div class="conversation-empty conversation-empty-plain" role="status">
+          {#if session.historyStatus === "loading" || session.historyStatus === "queued" || session.status === "starting" || session.status === "queued"}
+            <p class="empty-title">正在加载会话…</p>
+            <p class="empty-hint">从磁盘恢复 Pi 会话历史。</p>
+          {:else}
+            <p class="empty-title">开始对话</p>
+            <p class="empty-hint">让 Pi 检查代码、修改文件、执行命令，或解释当前项目。</p>
+          {/if}
+        </div>
       {/if}
       {#if session.isCompacting || session.isNavigatingTree}
         <div class="session-progress" role="status" aria-live="polite">

@@ -18,6 +18,11 @@ export interface SessionSummaryView {
   thinkingLevel?: ThinkingLevel;
   historyStatus: SessionHistoryStatus;
   requiresUserInput: boolean;
+  /**
+   * When the session was last used (opened, renamed, or a run settled) — not the time of its last
+   * message. Epoch milliseconds; always present so the list can order and label rows.
+   */
+  updatedAt: number;
 }
 
 

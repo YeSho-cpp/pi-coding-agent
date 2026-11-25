@@ -338,8 +338,88 @@ process.on("SIGTERM", () => process.exit(0));
     expect(registry.snapshot().activeSession).toMatchObject({ cwd: linked, status: "stopped" });
   });
 
-  it("rejects prompts while a resumed conversation history is loading", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "frostui-registry-"));
+  it("loads a history over the automatic cap when the session is opened on purpose", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "frostui-registry-large-"));
+    const sessionFile = join(dir, "large.jsonl");
+    await writeFile(sessionFile, Buffer.alloc(9 * 1024 * 1024));
+    const fakePi = join(dir, "fake-pi.cjs");
+    await writeFile(fakePi, largeHistoryFakePi());
+    testEnvironment.cwd = dir;
+    testEnvironment.piExecutable = fakePi;
+    const registry = new SessionRegistry(createContext() as never, { error: vi.fn(), info: vi.fn() } as never);
+    registries.push(registry);
+
+    await registry.openSession({ path: sessionFile, cwd: dir, title: "Large", updatedAt: Date.now() });
+
+    await waitFor(() => registry.snapshot().activeSession?.historyStatus === "loaded");
+    expect(conversationTurns(registry.snapshot().activeSession)).toHaveLength(1);
+  });
+
+  it("keeps the automatic cap when a restored session starts with the window", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "frostui-registry-restored-large-"));
+    const sessionFile = join(dir, "large.jsonl");
+    await writeFile(sessionFile, Buffer.alloc(9 * 1024 * 1024));
+    const fakePi = join(dir, "fake-pi.cjs");
+    await writeFile(fakePi, largeHistoryFakePi());
+    testEnvironment.cwd = dir;
+    testEnvironment.piExecutable = fakePi;
+    testEnvironment.startSessionOnOpenByCwd.set(dir, true);
+    const context = createContext();
+    context.workspaceState.get = () => ({
+      version: 1,
+      activeSessionId: "restored",
+      sessions: [{ id: "restored", title: "Restored", cwd: dir, sessionFile, updatedAt: 1 }],
+    });
+    const registry = new SessionRegistry(
+      context as never,
+      { error: vi.fn(), info: vi.fn() } as never,
+      () => Promise.resolve({
+        authoritative: true,
+        directories: [{ cwd: dir, workspaceFolderCwd: dir, directoryName: "main", isCurrent: true }],
+      }),
+    );
+    registries.push(registry);
+
+    await registry.ensureInitialSession();
+
+    await waitFor(() => registry.snapshot().activeSession?.historyStatus === "deferred");
+    expect(conversationTurns(registry.snapshot().activeSession)).toHaveLength(0);
+  });
+
+  it("lets an explicit load win over an automatic one that skipped a large file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "frostui-registry-force-load-"));
+    const sessionFile = join(dir, "large.jsonl");
+    await writeFile(sessionFile, Buffer.alloc(9 * 1024 * 1024));
+    const fakePi = join(dir, "fake-pi.cjs");
+    await writeFile(fakePi, largeHistoryFakePi());
+    testEnvironment.cwd = dir;
+    testEnvironment.piExecutable = fakePi;
+    testEnvironment.startSessionOnOpenByCwd.set(dir, true);
+    const context = createContext();
+    context.workspaceState.get = () => ({
+      version: 1,
+      activeSessionId: "restored",
+      sessions: [{ id: "restored", title: "Restored", cwd: dir, sessionFile, updatedAt: 1 }],
+    });
+    const registry = new SessionRegistry(
+      context as never,
+      { error: vi.fn(), info: vi.fn() } as never,
+      () => Promise.resolve({
+        authoritative: true,
+        directories: [{ cwd: dir, workspaceFolderCwd: dir, directoryName: "main", isCurrent: true }],
+      }),
+    );
+    registries.push(registry);
+
+    await registry.ensureInitialSession();
+    // The automatic load is still queued behind the size gate here.
+    await registry.loadHistory("restored");
+
+    expect(registry.snapshot().activeSession?.historyStatus).toBe("loaded");
+    expect(conversationTurns(registry.snapshot().activeSession)).toHaveLength(1);
+  });
+
+  it("rejects prompts while a resumed conversation history is loading", async () => {    const dir = await mkdtemp(join(tmpdir(), "frostui-registry-"));
     const sessionFile = join(dir, "session.jsonl");
     await writeFile(sessionFile, `${JSON.stringify({ type: "session", version: 3, id: "resume", cwd: dir })}\n`);
     const fakePi = join(dir, "fake-pi.cjs");
@@ -889,4 +969,34 @@ function createContext(): {
       delete: () => Promise.resolve(),
     },
   };
+}
+
+/** Reports one persisted turn without reading the padded file, so only the size gate decides. */
+function largeHistoryFakePi(): string {
+  return String.raw`#!/usr/bin/env node
+const sessionIndex = process.argv.indexOf("--session");
+const sessionFile = sessionIndex >= 0 ? process.argv[sessionIndex + 1] : undefined;
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => {
+  input += chunk;
+  while (input.includes("\n")) {
+    const index = input.indexOf("\n");
+    const command = JSON.parse(input.slice(0, index));
+    input = input.slice(index + 1);
+    const response = { type: "response", id: command.id, success: true };
+    if (command.type === "get_state") response.data = { model: null, thinkingLevel: "off", isStreaming: false, isCompacting: false, sessionFile, sessionId: "large" };
+    else if (command.type === "get_entries") response.data = { entries: [
+      { type: "message", id: "large-user", parentId: null, message: { role: "user", content: "Large request", timestamp: 1 } },
+      { type: "message", id: "large-assistant", parentId: "large-user", message: { role: "assistant", timestamp: 2, stopReason: "stop", content: [{ type: "text", text: "Large answer" }] } },
+    ], leafId: "large-assistant" };
+    else if (command.type === "get_messages") response.data = { messages: [] };
+    else if (command.type === "get_available_models") response.data = { models: [] };
+    else if (command.type === "get_commands") response.data = { commands: [] };
+    else if (command.type === "get_session_stats") response.data = { sessionFile, sessionId: "large", userMessages: 1, assistantMessages: 1, toolCalls: 0, toolResults: 0, totalMessages: 2, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }, cost: 0 };
+    process.stdout.write(JSON.stringify(response) + "\n");
+  }
+});
+process.on("SIGTERM", () => process.exit(0));
+`;
 }

@@ -198,6 +198,7 @@ export class SessionRegistry implements vscode.Disposable {
           thinkingLevel: view.thinkingLevel,
           historyStatus: view.historyStatus,
           requiresUserInput: view.pendingExtensionUi.length > 0,
+          updatedAt: record.updatedAt,
         };
       }
       // Persisted but not started this window (lazy runtime).
@@ -211,6 +212,7 @@ export class SessionRegistry implements vscode.Disposable {
         isEphemeral: record.ephemeral === true,
         historyStatus: "deferred" as const,
         requiresUserInput: false,
+        updatedAt: record.updatedAt,
       };
     });
     const piError = activeView?.status === "failed" ? activeView.error : undefined;
@@ -518,7 +520,7 @@ export class SessionRegistry implements vscode.Disposable {
     this.#activeSessionId = id;
     await this.#persist();
     this.#emitChange();
-    await this.#startRuntime(runtime, workingDirectoryValidated);
+    await this.#startRuntime(runtime, workingDirectoryValidated, true);
     return id;
   }
 
@@ -555,7 +557,7 @@ export class SessionRegistry implements vscode.Disposable {
     this.#activeSessionId = sessionId;
     await this.#persist();
     this.#emitChange();
-    if (runtime.view.status === "stopped" && !runtime.isEphemeral) await this.#startRuntime(runtime);
+    if (runtime.view.status === "stopped" && !runtime.isEphemeral) await this.#startRuntime(runtime, false, true);
   }
 
   async closeSession(sessionId: string): Promise<void> {
@@ -1014,7 +1016,7 @@ export class SessionRegistry implements vscode.Disposable {
     );
   }
 
-  async #startRuntime(runtime: SessionRuntime, workingDirectoryValidated = false): Promise<void> {
+  async #startRuntime(runtime: SessionRuntime, workingDirectoryValidated = false, loadLargeHistory = false): Promise<void> {
     const pending = this.#startJobs.get(runtime.id);
     if (pending) return pending;
     if (!workingDirectoryValidated && !await this.#validateRuntimeWorkingDirectory(runtime)) return;
@@ -1025,7 +1027,7 @@ export class SessionRegistry implements vscode.Disposable {
       if (this.#runtimes.get(runtime.id) !== runtime) return;
       try {
         await runtime.start(sessionFile);
-        if (sessionFile) void this.#queueHistory(runtime, false).catch(() => undefined);
+        if (sessionFile) void this.#queueHistory(runtime, loadLargeHistory).catch(() => undefined);
       } catch (error) {
         if (this.#runtimes.get(runtime.id) !== runtime) return;
         const message = error instanceof Error ? error.message : String(error);
@@ -1120,7 +1122,7 @@ export class SessionRegistry implements vscode.Disposable {
     const originalRuntime = this.#requireRuntime(operation.sourceId);
     let restartError: unknown;
     try {
-      await this.#startRuntime(originalRuntime);
+      await this.#startRuntime(originalRuntime, false, true);
     } catch (error) {
       restartError = error;
     }
@@ -1174,7 +1176,7 @@ export class SessionRegistry implements vscode.Disposable {
     if (runtime.isEphemeral) throw new Error("Temporary sessions cannot be restarted.");
     if (!await this.#validateRuntimeWorkingDirectory(runtime)) return;
     await runtime.stop().catch(() => undefined);
-    await this.#startRuntime(runtime, true);
+    await this.#startRuntime(runtime, true, true);
   }
 
   async #ensureRunning(runtime: SessionRuntime): Promise<void> {
@@ -1188,9 +1190,12 @@ export class SessionRegistry implements vscode.Disposable {
 
   async #queueHistory(runtime: SessionRuntime, force: boolean): Promise<void> {
     const pending = this.#historyJobs.get(runtime.id);
-    if (pending) return pending;
-    runtime.markHistoryWaiting();
-    const job = this.#historyQueue.catch(() => undefined).then(async () => {
+    // An automatic load may already have decided to skip a large file; an explicit load must not
+    // be answered by that decision, so it queues behind it instead of reusing it.
+    if (pending && !force) return pending;
+    if (!pending) runtime.markHistoryWaiting();
+    const prior = pending ?? this.#historyQueue;
+    const job = prior.catch(() => undefined).then(async () => {
       if (this.#runtimes.get(runtime.id) !== runtime) return;
       await runtime.loadHistory(force);
     });
